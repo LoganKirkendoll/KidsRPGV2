@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, GameSettings, Item, DialogueChoice, Quest } from '../types/game';
-import { createStartingCharacter, achievements, items } from '../data/gameData';
+import { createStartingCharacter, achievements, items, backgrounds } from '../data/gameData';
 import { createAllMaps } from '../data/maps';
 import { maps } from '../data/maps';
 import { allQuests } from '../data/quests';
