@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, GameSettings, Item, DialogueChoice, Quest } from '../types/game';
-import { createStartingCharacter, achievements, items, backgrounds } from '../data/gameData';
+import { createStartingCharacter, achievements, items } from '../data/gameData';
 import { createAllMaps } from '../data/maps';
 import { maps } from '../data/maps';
 import { allQuests } from '../data/quests';
@@ -27,33 +27,8 @@ export const useGameState = () => {
     setGameState(newState);
   }, []);
 
-  const createNewGame = useCallback((playerName: string, characterClass: any, characterData?: any) => {
+  const createNewGame = useCallback((playerName: string, characterClass: any) => {
     const player = createStartingCharacter(playerName, characterClass);
-    
-    // Apply character data if provided
-    if (characterData) {
-      player.background = characterData.background;
-      player.age = characterData.age;
-      player.gender = characterData.gender;
-      player.biography = characterData.biography;
-      player.traits = characterData.traits;
-      
-      // Apply background bonuses
-      const background = backgrounds.find(b => b.id === characterData.background);
-      if (background) {
-        Object.entries(background.bonuses).forEach(([stat, bonus]) => {
-          if (stat in player.stats) {
-            player.stats[stat as keyof typeof player.stats] += bonus;
-          }
-        });
-        Object.entries(background.penalties).forEach(([stat, penalty]) => {
-          if (stat in player.stats) {
-            player.stats[stat as keyof typeof player.stats] += penalty;
-          }
-        });
-      }
-    }
-    
     // Only create the starting map initially
     const startingMap = maps['capital_wasteland']();
     
@@ -372,7 +347,6 @@ export const useGameState = () => {
     gameState,
     settings,
     gameMode,
-    setGameMode,
     createNewGame,
     loadGame,
     saveGame,

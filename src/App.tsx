@@ -24,7 +24,6 @@ function App() {
     gameState,
     settings,
     gameMode,
-    setGameMode,
     createNewGame,
     loadGame,
     saveGame,
@@ -425,25 +424,17 @@ function App() {
   };
 
   const handleStartNewGame = () => {
+    setShowIntro(true);
+  };
+
+  const handleIntroComplete = () => {
+    setShowIntro(false);
     setGameMode('character-creation');
   };
 
-  const handleCharacterCreated = (characterData: any) => {
-    setShowIntro(true);
-    // Store character data for after intro
-    setSelectedCharacterData(characterData);
-  };
-
-  const handleIntroComplete = (characterData: any) => {
-    setShowIntro(false);
-    createNewGame(characterData.name, characterData.class, characterData);
-  };
-
-  const [selectedCharacterData, setSelectedCharacterData] = useState<any>(null);
-
   // Show intro screen
   if (showIntro) {
-    return <IntroScreen characterData={selectedCharacterData} onComplete={handleIntroComplete} />;
+    return <IntroScreen onComplete={handleIntroComplete} />;
   }
 
   switch (gameMode) {
@@ -462,7 +453,7 @@ function App() {
     case 'character-creation':
       return (
         <CharacterCreation
-          onCreateCharacter={handleCharacterCreated}
+          onCreateCharacter={(characterData) => createNewGame(characterData.name, characterData.class)}
           onBack={returnToMenu}
         />
       );

@@ -77,8 +77,8 @@ export class GameEngine {
     this.lightSources.push({
       x: this.gameState.player.position.x,
       y: this.gameState.player.position.y,
-      radius: 150, // Smaller radius
-      intensity: 0.3, // Much lower intensity
+      radius: 200,
+      intensity: 0.8,
       color: '#ffeb3b',
       type: 'player'
     });
@@ -129,23 +129,18 @@ export class GameEngine {
   }
 
   private addParticleEffect(x: number, y: number, type: string) {
-    const particleCount = type === 'click' ? 5 : 
-                         type === 'damage' ? 8 : 
-                         type === 'heal' ? 6 : 10;
+    const particleCount = type === 'click' ? 5 : 10;
     
     for (let i = 0; i < particleCount; i++) {
       this.particleSystem.push({
         x: x + (Math.random() - 0.5) * 20,
         y: y + (Math.random() - 0.5) * 20,
         vx: (Math.random() - 0.5) * 100,
-        vy: type === 'heal' ? -(Math.random() * 50 + 25) : (Math.random() - 0.5) * 100,
+        vy: (Math.random() - 0.5) * 100,
         life: 1,
         maxLife: 1,
         size: Math.random() * 4 + 2,
-        color: type === 'click' ? '#ffeb3b' : 
-               type === 'damage' ? '#ff5722' : 
-               type === 'heal' ? '#4caf50' : 
-               type === 'teleport' ? '#9c27b0' : '#ff5722',
+        color: type === 'click' ? '#ffeb3b' : '#ff5722',
         type
       });
     }
@@ -485,30 +480,25 @@ export class GameEngine {
   private checkMapTransitions(x: number, y: number) {
     if (this.gameState.currentMap.isInterior) return;
 
-    const mapEdgeThreshold = 64; // Increased threshold for easier transitions
+    const mapEdgeThreshold = 32;
     
-    // Check if player has crossed map boundaries
-    const crossedNorth = y < 0;
-    const crossedSouth = y >= this.gameState.currentMap.height * 32;
-    const crossedWest = x < 0;
-    const crossedEast = x >= this.gameState.currentMap.width * 32;
-    
-    let direction: string | null = null;
-    
-    if (crossedNorth) direction = 'north';
-    else if (crossedSouth) direction = 'south';
-    else if (crossedWest) direction = 'west';
-    else if (crossedEast) direction = 'east';
-    
-    if (!direction) return;
+    // Check if player is near map edge
+    if (x < mapEdgeThreshold || y < mapEdgeThreshold || 
+        x > (this.gameState.currentMap.width - 1) * 32 - mapEdgeThreshold ||
+        y > (this.gameState.currentMap.height - 1) * 32 - mapEdgeThreshold) {
       
-    // Find appropriate connection
-    const connection = this.gameState.currentMap.connections.find(conn => {
-      return conn.direction === direction;
-    });
-    
-    if (connection) {
-      this.transitionToMap(connection.targetMapId, connection.toPosition);
+      // Find appropriate connection
+      const connection = this.gameState.currentMap.connections.find(conn => {
+        const distance = Math.sqrt(
+          Math.pow(conn.fromPosition.x - x, 2) + 
+          Math.pow(conn.fromPosition.y - y, 2)
+        );
+        return distance < 64;
+      });
+      
+      if (connection) {
+        this.transitionToMap(connection.targetMapId, connection.toPosition);
+      }
     }
   }
 
@@ -584,30 +574,20 @@ export class GameEngine {
       particle.x += particle.vx * deltaTime;
       particle.y += particle.vy * deltaTime;
       particle.life -= deltaTime;
-      
-      // Apply gravity only to certain particle types
-      if (particle.type === 'dust' || particle.type === 'damage') {
-        particle.vy += 50 * deltaTime; // Gravity
-      }
-      
+      particle.vy += 50 * deltaTime; // Gravity
       return particle.life > 0;
     });
   }
 
   private updateLighting(deltaTime: number) {
-    // Don't update lighting inside buildings
-    if (this.gameState.currentMap.isInterior) {
-      return;
-    }
-    
     // Update player light position
     const playerLight = this.lightSources.find(light => light.type === 'player');
     if (playerLight) {
       playerLight.x = this.gameState.player.position.x;
       playerLight.y = this.gameState.player.position.y;
       
-      // Much more subtle flicker effect
-      playerLight.intensity = 0.3 + Math.sin(Date.now() * 0.01) * 0.05;
+      // Flicker effect
+      playerLight.intensity = 0.8 + Math.sin(Date.now() * 0.01) * 0.1;
     }
     
     // Update other dynamic lights
@@ -619,29 +599,6 @@ export class GameEngine {
   }
 
   private updateWeather(deltaTime: number) {
-    // Don't update weather inside buildings
-    if (this.gameState.currentMap.isInterior) {
-      return;
-    }
-    
-    // Slower weather changes - only change every 2-5 minutes
-    if (Math.random() < 0.0001) { // Much lower chance
-      const weatherTypes = ['clear', 'rain', 'fog'];
-      const currentIndex = weatherTypes.indexOf(this.gameState.weather);
-      let newWeather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
-      
-      // Prefer staying with current weather
-      if (Math.random() < 0.7) {
-        newWeather = this.gameState.weather;
-      }
-      
-      if (newWeather !== this.gameState.weather) {
-        const newState = { ...this.gameState };
-        newState.weather = newWeather as any;
-        this.updateGameState(newState);
-      }
-    }
-    
     // Update weather effects based on current weather
     switch (this.gameState.weather) {
       case 'rain':
@@ -850,12 +807,6 @@ export class GameEngine {
       baseColor = this.darkenColor(baseColor, 0.5);
     }
     
-    // Render buildings properly
-    if (tile.type === 'building') {
-      this.renderBuilding(tile, x, y);
-      return;
-    }
-    
     // Add texture pattern
     if (!this.settings.lowGraphicsMode) {
       this.renderTileTexture(tile.type, x, y, baseColor);
@@ -868,45 +819,6 @@ export class GameEngine {
     if (tile.visible && !this.settings.lowGraphicsMode) {
       this.renderTileDetails(tile, x, y);
     }
-  }
-
-  private renderBuilding(tile: Tile, x: number, y: number) {
-    // Building base
-    this.ctx.fillStyle = '#8B4513'; // Brown building color
-    this.ctx.fillRect(x, y, 32, 32);
-    
-    // Building details
-    if (!this.settings.lowGraphicsMode) {
-      // Windows
-      this.ctx.fillStyle = '#FFD700'; // Golden windows
-      this.ctx.fillRect(x + 4, y + 4, 6, 6);
-      this.ctx.fillRect(x + 22, y + 4, 6, 6);
-      this.ctx.fillRect(x + 4, y + 22, 6, 6);
-      this.ctx.fillRect(x + 22, y + 22, 6, 6);
-      
-      // Door (if it's an entrance)
-      if (tile.isEntrance) {
-        this.ctx.fillStyle = '#654321';
-        this.ctx.fillRect(x + 12, y + 20, 8, 12);
-        
-        // Door handle
-        this.ctx.fillStyle = '#FFD700';
-        this.ctx.fillRect(x + 18, y + 26, 2, 2);
-      }
-      
-      // Building name
-      if (tile.buildingName) {
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = '8px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(tile.buildingName.substring(0, 8), x + 16, y - 2);
-      }
-    }
-    
-    // Building border
-    this.ctx.strokeStyle = '#654321';
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x, y, 32, 32);
   }
 
   private renderTileTexture(type: string, x: number, y: number, baseColor: string) {
@@ -1045,7 +957,7 @@ export class GameEngine {
       this.ctx.globalAlpha = 1;
     }
     
-    // Character body - remove red bleeding effect
+    // Character body
     this.ctx.fillStyle = character.id === 'player' ? '#4CAF50' : '#2196F3';
     this.ctx.fillRect(x + 4, y + 8, 24, 24);
     
@@ -1069,7 +981,7 @@ export class GameEngine {
     }
     
     // Health bar
-    if (character.health < character.maxHealth && character.health > 0) {
+    if (character.health < character.maxHealth) {
       this.renderHealthBar(x + 16, y - 8, character.health, character.maxHealth);
     }
     
@@ -1255,20 +1167,15 @@ export class GameEngine {
   private renderLighting() {
     if (this.settings.lowGraphicsMode) return;
     
-    // Don't apply lighting effects inside buildings
-    if (this.gameState.currentMap.isInterior) {
-      return;
-    }
-    
     // Create lighting overlay
     this.ctx.save();
     this.ctx.globalCompositeOperation = 'multiply';
     
     // Base darkness
     const timeOfDay = this.getTimeOfDay();
-    let darkness = 0.1; // Much lighter base darkness
-    if (timeOfDay === 'night') darkness = 0.4; // Reduced night darkness
-    if (timeOfDay === 'dusk' || timeOfDay === 'dawn') darkness = 0.2; // Reduced twilight darkness
+    let darkness = 0.3;
+    if (timeOfDay === 'night') darkness = 0.8;
+    if (timeOfDay === 'dusk' || timeOfDay === 'dawn') darkness = 0.5;
     
     this.ctx.fillStyle = `rgba(0, 0, 0, ${darkness})`;
     this.ctx.fillRect(
@@ -1282,27 +1189,13 @@ export class GameEngine {
     this.ctx.globalCompositeOperation = 'screen';
     this.lightSources.forEach(light => {
       if (this.isInViewport({ x: light.x, y: light.y })) {
-        // Much more subtle glow around player
-        const intensity = light.type === 'player' ? light.intensity * 0.2 : 
-                         light.type === 'radiation' ? light.intensity * 0.1 : 
-                         light.intensity;
-        
         const gradient = this.ctx.createRadialGradient(
           light.x, light.y, 0,
           light.x, light.y, light.radius
         );
         
-        // Use different colors for different light types
-        if (light.type === 'radiation') {
-          gradient.addColorStop(0, `rgba(0, 255, 0, ${intensity * 0.2})`); // Very subtle green
-          gradient.addColorStop(0.5, `rgba(0, 200, 0, ${intensity * 0.1})`);
-        } else if (light.type === 'player') {
-          gradient.addColorStop(0, `rgba(255, 235, 59, ${intensity * 0.3})`); // Subtle player glow
-          gradient.addColorStop(0.5, `rgba(255, 193, 7, ${intensity * 0.1})`);
-        } else {
-          gradient.addColorStop(0, `rgba(255, 235, 59, ${intensity})`);
-          gradient.addColorStop(0.5, `rgba(255, 193, 7, ${intensity * 0.5})`);
-        }
+        gradient.addColorStop(0, `rgba(255, 235, 59, ${light.intensity})`);
+        gradient.addColorStop(0.5, `rgba(255, 193, 7, ${light.intensity * 0.5})`);
         gradient.addColorStop(1, 'rgba(255, 193, 7, 0)');
         
         this.ctx.fillStyle = gradient;
@@ -1320,11 +1213,6 @@ export class GameEngine {
 
   private renderWeatherEffects() {
     if (this.settings.lowGraphicsMode) return;
-    
-    // Don't render weather effects inside buildings
-    if (this.gameState.currentMap.isInterior) {
-      return;
-    }
     
     this.ctx.save();
     
@@ -1470,16 +1358,8 @@ export class GameEngine {
     this.ctx.textAlign = 'left';
     this.ctx.fillText(`Time: ${timeString}`, x + 10, y + 15);
     
-    // Weather with clearer descriptions
-    const weatherDescriptions = {
-      clear: 'Clear Skies',
-      rain: 'Light Rain',
-      storm: 'Heavy Storm',
-      fog: 'Dense Fog',
-      radiation: 'Rad Storm'
-    };
-    const weatherDesc = weatherDescriptions[this.gameState.weather as keyof typeof weatherDescriptions] || this.gameState.weather;
-    this.ctx.fillText(`Weather: ${weatherDesc}`, x + 10, y + 30);
+    // Weather
+    this.ctx.fillText(`Weather: ${this.gameState.weather}`, x + 10, y + 30);
     
     this.ctx.restore();
   }
@@ -1578,89 +1458,8 @@ export class GameEngine {
   }
 
   public handleCombatAction(action: string, targetIndex?: number) {
-    if (!this.gameState.combat) return;
-    
-    const combat = this.gameState.combat;
-    const currentActor = combat.turnOrder[combat.currentTurn];
-    
-    if (!combat.isPlayerTurn) return;
-    
-    // Find the skill
-    const skill = currentActor.skills.find(s => s.id === action);
-    if (!skill || currentActor.energy < skill.energyCost || skill.currentCooldown > 0) {
-      return;
-    }
-    
-    // Get target
-    const target = targetIndex !== undefined ? combat.participants[targetIndex] : null;
-    if (!target) return;
-    
-    // Execute action
-    const newState = { ...this.gameState };
-    const newCombat = { ...combat };
-    
-    // Reduce energy
-    currentActor.energy -= skill.energyCost;
-    
-    // Apply skill effects
-    if (skill.damage && target) {
-      const damage = skill.damage;
-      target.health = Math.max(0, target.health - damage);
-      newCombat.combatLog.push(`${currentActor.name} deals ${damage} damage to ${target.name}!`);
-      
-      // Add damage particles
-      this.addParticleEffect(target.position.x, target.position.y, 'damage');
-    }
-    
-    if (skill.healing && target) {
-      const healing = skill.healing;
-      target.health = Math.min(target.maxHealth, target.health + healing);
-      newCombat.combatLog.push(`${currentActor.name} heals ${target.name} for ${healing} HP!`);
-      
-      // Add healing particles
-      this.addParticleEffect(target.position.x, target.position.y, 'heal');
-    }
-    
-    // Set cooldown
-    skill.currentCooldown = skill.cooldown;
-    
-    // Next turn
-    newCombat.currentTurn = (newCombat.currentTurn + 1) % newCombat.turnOrder.length;
-    newCombat.isPlayerTurn = newCombat.turnOrder[newCombat.currentTurn].id === 'player' || 
-                            this.gameState.party.some(p => p.id === newCombat.turnOrder[newCombat.currentTurn].id);
-    
-    // Check for combat end
-    const allEnemiesDead = newCombat.participants.filter(p => !('class' in p)).every(enemy => enemy.health <= 0);
-    const allAlliesDead = newCombat.participants.filter(p => 'class' in p).every(ally => ally.health <= 0);
-    
-    if (allEnemiesDead || allAlliesDead) {
-      // End combat
-      newState.combat = undefined;
-      newState.gameMode = 'exploration';
-      
-      if (allEnemiesDead) {
-        // Victory - give experience and loot
-        const expGained = newCombat.participants.filter(p => !('class' in p)).reduce((total, enemy) => total + enemy.experience, 0);
-        newState.player.experience += expGained;
-        newCombat.combatLog.push(`Victory! Gained ${expGained} experience!`);
-        
-        // Check for level up
-        while (newState.player.experience >= newState.player.experienceToNext) {
-          newState.player.experience -= newState.player.experienceToNext;
-          newState.player.level++;
-          newState.player.experienceToNext = newState.player.level * 100;
-          newState.player.maxHealth += 10;
-          newState.player.maxEnergy += 5;
-          newState.player.health = newState.player.maxHealth;
-          newState.player.energy = newState.player.maxEnergy;
-          newCombat.combatLog.push(`Level up! Now level ${newState.player.level}!`);
-        }
-      }
-    } else {
-      newState.combat = newCombat;
-    }
-    
-    this.updateGameState(newState);
+    // Combat action handling would be implemented here
+    console.log('Combat action:', action, 'target:', targetIndex);
   }
 }
 
