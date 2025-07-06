@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Skull, RotateCcw, Home } from 'lucide-react';
+import { useAudio } from '../hooks/useAudio';
 
 interface GameOverScreenProps {
   onLoadGame: () => void;
@@ -7,6 +8,7 @@ interface GameOverScreenProps {
 }
 
 const GameOverScreen: React.FC<GameOverScreenProps> = ({ onLoadGame, onMainMenu }) => {
+  const { playMusic } = useAudio();
   // Disable all hotkeys in game over screen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -17,6 +19,11 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ onLoadGame, onMainMenu 
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, []);
+
+  // Play defeat music when component mounts
+  useEffect(() => {
+    playMusic('defeat', 0.4, false);
+  }, [playMusic]);
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50">

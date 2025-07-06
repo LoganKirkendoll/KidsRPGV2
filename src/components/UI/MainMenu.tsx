@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SaveSystem } from '../../engine/SaveSystem';
 import { Play, Save, Settings, Trophy, FileText, X } from 'lucide-react';
+import { useAudio } from '../../hooks/useAudio';
 
 interface MainMenuProps {
   onNewGame: () => void;
@@ -13,6 +14,7 @@ interface MainMenuProps {
 
 const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onSettings, onQuit, settings, onUpdateSettings }) => {
   const [showLoadMenu, setShowLoadMenu] = useState(false);
+  const { playMusic, stopMusic } = useAudio();
   
   // Disable hotkeys in main menu
   useEffect(() => {
@@ -24,6 +26,15 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onSettings, 
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, []);
+  
+  // Play menu music when component mounts
+  useEffect(() => {
+    playMusic('menu', 0.4, true);
+    
+    return () => {
+      stopMusic();
+    };
+  }, [playMusic, stopMusic]);
   
   const [showAchievements, setShowAchievements] = useState(false);
   const [showCredits, setShowCredits] = useState(false);

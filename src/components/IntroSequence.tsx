@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Play, SkipForward } from 'lucide-react';
+import { useAudio } from '../hooks/useAudio';
 
 interface IntroSequenceProps {
   onComplete: () => void;
@@ -9,6 +10,7 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
   const [currentScene, setCurrentScene] = useState(0);
   const [showText, setShowText] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
+  const { playMusic, stopMusic } = useAudio();
 
   const scenes = [
     {
@@ -45,6 +47,15 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
     }
   ];
 
+  // Play intro music when component mounts
+  useEffect(() => {
+    playMusic('menu', 0.4, true);
+    
+    return () => {
+      stopMusic();
+    };
+  }, [playMusic, stopMusic]);
+
   useEffect(() => {
     setCanSkip(true);
     
@@ -71,6 +82,7 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
 
   const handleSkip = () => {
     if (canSkip) {
+      playSfx('/assets/audio/select.mp3', 0.4);
       onComplete();
       // Prevent multiple clicks by disabling the button
       setCanSkip(false);

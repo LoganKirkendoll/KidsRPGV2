@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Character, Enemy, CombatState, Skill } from '../types/game';
 import { Heart, Zap, Sword, Shield, ArrowLeft, RotateCcw } from 'lucide-react';
+import { useAudio } from '../hooks/useAudio';
 
 interface PokemonStyleCombatProps {
   combatState: CombatState;
@@ -16,6 +17,7 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
   const [selectedAction, setSelectedAction] = useState<'attack' | 'skills' | 'items' | 'run' | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [animationState, setAnimationState] = useState<'idle' | 'attacking' | 'hurt' | 'victory'>('idle');
+  const { playMusic, playSfx } = useAudio();
   const [combatText, setCombatText] = useState<string>('');
   const [showDamage, setShowDamage] = useState<{ amount: number; type: 'damage' | 'heal'; show: boolean }>({ amount: 0, type: 'damage', show: false });
 
@@ -41,6 +43,11 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [onEndCombat]);
 
+  // Play combat music when component mounts
+  useEffect(() => {
+    playMusic('combat', 0.5, true);
+  }, [playMusic]);
+
   useEffect(() => {
     if (combatState.combatLog.length > 0) {
       const latestLog = combatState.combatLog[combatState.combatLog.length - 1];
@@ -53,6 +60,7 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
           setShowDamage({ amount: parseInt(damageMatch[1]), type: 'damage', show: true });
           setTimeout(() => setShowDamage(prev => ({ ...prev, show: false })), 2000);
         }
+        playSfx('/assets/audio/hit.mp3', 0.4);
       }
     }
   }, [combatState.combatLog]);
@@ -60,6 +68,7 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
   const handleAttack = () => {
     setAnimationState('attacking');
     onAction('basic_attack', 1);
+    playSfx('/assets/audio/attack.mp3', 0.4);
     setTimeout(() => setAnimationState('idle'), 1000);
     setSelectedAction(null);
   };
@@ -67,6 +76,7 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
   const handleSkillSelect = (skill: Skill) => {
     setSelectedSkill(skill);
     setAnimationState('attacking');
+    playSfx('/assets/audio/skill.mp3', 0.4);
     onAction(skill.id, 1);
     setTimeout(() => setAnimationState('idle'), 1000);
     setSelectedAction(null);

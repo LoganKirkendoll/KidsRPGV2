@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { GameEngine } from '../engine/GameEngine';
 import { GameState, GameSettings } from '../types/game';
+import { useAudio } from '../hooks/useAudio';
 
 interface GameCanvasProps {
   gameState: GameState;
@@ -11,6 +12,7 @@ interface GameCanvasProps {
 const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, settings, onGameStateChange }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+  const { playMusic } = useAudio();
 
   useEffect(() => {
     if (canvasRef.current && !engineRef.current) {
@@ -39,6 +41,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, settings, onGameStat
       };
     }
   }, [onGameStateChange]);
+
+  // Play exploration music when in exploration mode
+  useEffect(() => {
+    if (gameState && gameState.gameMode === 'exploration') {
+      playMusic('exploration', 0.4, true);
+    }
+    // Don't stop music here as other components handle their own music
+    // This prevents music from stopping when switching between modes
+  }, [gameState?.gameMode, playMusic]);
 
   useEffect(() => {
     if (engineRef.current) {
