@@ -97,7 +97,7 @@ export const useGameState = () => {
         goldSpent: 0
       },
       visibilityMap: [],
-      quests: [allQuests.find(q => q.id === 'escape_vault_101')!], // Start with the escape quest
+      quests: [], // Start with no quests initially
       devMode: {
         enabled: false,
         selectedTool: 'quest',
