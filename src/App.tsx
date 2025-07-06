@@ -48,6 +48,7 @@ function App() {
   const [showGameOver, setShowGameOver] = useState(false);
   const engineRef = useRef<GameEngine | null>(null);
   const [showIntro, setShowIntro] = useState(false);
+  const [selectedCharacterClass, setSelectedCharacterClass] = useState<string>('warrior');
 
   // Listen for lootable events from the game engine
   useEffect(() => {
@@ -430,14 +431,17 @@ function App() {
     setShowIntro(true);
   };
 
-  const handleIntroComplete = () => {
+  const handleIntroComplete = (characterClass?: string) => {
     setShowIntro(false);
-    startNewGame();
+    if (characterClass) {
+      setSelectedCharacterClass(characterClass);
+    }
+    setGameMode('character-creation');
   };
 
   // Show intro screen
   if (showIntro) {
-    return <IntroSequence onComplete={handleIntroComplete} />;
+    return <IntroSequence onComplete={handleIntroComplete} characterClass={selectedCharacterClass} />;
   }
 
   switch (gameMode) {
@@ -456,7 +460,10 @@ function App() {
     case 'character-creation':
       return (
         <CharacterCreation
-          onCreateCharacter={(characterData) => createNewGame(characterData.name, characterData.class)}
+          onCreateCharacter={(characterData) => {
+            setSelectedCharacterClass(characterData.class);
+            setShowIntro(true);
+          }}
           onBack={returnToMenu}
         />
       );

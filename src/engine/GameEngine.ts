@@ -1,403 +1,78 @@
-import { GameState, Position, Character, Enemy, NPC, Tile, GameMap } from '../types/game';
-import { maps } from '../data/maps';
-import { getBuildingByPosition, getBuildingById } from '../data/buildings';
-import BuildingRenderer from '../components/BuildingRenderer';
+import { GameState, Position, Character, Enemy, CombatState, Tile, GameMap, NPC, LootableItem, Item } from '../types/game';
+import { enemies } from '../data/enemies';
+import { items } from '../data/items_data';
+import { createAllMaps } from '../data/maps';
+import { getBuildingById } from '../data/buildings';
 
 export class GameEngine {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private gameState: GameState;
   private settings: any;
-  private keys: { [key: string]: boolean } = {};
-  private lastTime = 0;
   private animationId: number | null = null;
-  private stateChangeCallback?: (newState: GameState) => void;
-  private lootableCallback?: (lootable: any) => void;
-  private loadedMaps: { [key: string]: GameMap } = {};
-  private isTransitioning = false;
-  private transitionCooldown = 0;
-  private edgeTimer = 0;
-  private isAtEdge = false;
-  private edgeDirection: 'north' | 'south' | 'east' | 'west' | null = null;
-  
-  // Graphics system
-  private tileSprites: { [key: string]: HTMLCanvasElement } = {};
-  private characterSprites: { [key: string]: HTMLCanvasElement } = {};
-  private uiSprites: { [key: string]: HTMLCanvasElement } = {};
-  private particleSystem: Particle[] = [];
-  private lightingSystem: LightSource[] = [];
-  
-  // Performance optimization properties
-  private frameCount = 0;
-  private lastFpsTime = 0;
-  private targetFps = 60;
-  private frameInterval = 1000 / this.targetFps;
-  private lastRenderTime = 0;
-  private visibleTileCache: { [key: string]: boolean } = {};
-  private lastCameraPosition = { x: -1, y: -1 };
-  private renderBounds = { startX: 0, startY: 0, endX: 0, endY: 0 };
-  private isLowPerformanceDevice = false;
-  private tileRenderCache: ImageData | null = null;
-  private cacheInvalidated = true;
-  private lastPlayerPosition = { x: -1, y: -1 };
-  private renderSkipCounter = 0;
-  private maxRenderSkip = 2;
+  private lastTime = 0;
+  private keys: Set<string> = new Set();
+  private stateChangeCallback?: (state: GameState) => void;
+  private lootableCallback?: (lootable: LootableItem) => void;
+  private lastMoveTime = 0;
+  private moveDelay = 150; // milliseconds between moves
+  private allMaps: { [key: string]: GameMap } = {};
 
-  constructor(canvas: HTMLCanvasElement, initialGameState: GameState, settings?: any) {
+  constructor(canvas: HTMLCanvasElement, initialState: GameState, settings: any) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
-    this.gameState = { ...initialGameState };
-    this.settings = settings || { lowGraphicsMode: false };
+    this.gameState = { ...initialState };
+    this.settings = settings;
     
-    this.canvas.width = 1024;
-    this.canvas.height = 768;
+    // Set canvas size
+    this.canvas.width = 800;
+    this.canvas.height = 600;
     
-    // Initialize graphics system
-    this.initializeGraphics();
+    // Initialize all maps
+    this.allMaps = createAllMaps();
     
-    // Detect low performance devices
-    this.detectPerformance();
+    // Initialize visibility map
+    this.initializeVisibilityMap();
     
-    // Load only current map initially
-    this.loadedMaps[this.gameState.currentMap.id] = this.gameState.currentMap;
-    
+    // Set up event listeners
     this.setupEventListeners();
+    
+    // Start game loop
     this.gameLoop(0);
   }
 
-  private initializeGraphics() {
-    // Create tile sprites
-    this.createTileSprites();
-    this.createCharacterSprites();
-    this.createUISprites();
-    
-    // Initialize lighting
-    this.initializeLighting();
-  }
-
-  private createTileSprites() {
-    const tileSize = 32;
-    
-    // Grass tile with texture
-    const grassCanvas = document.createElement('canvas');
-    grassCanvas.width = grassCanvas.height = tileSize;
-    const grassCtx = grassCanvas.getContext('2d')!;
-    
-    // Base grass color
-    grassCtx.fillStyle = '#4a7c59';
-    grassCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Add grass texture
-    for (let i = 0; i < 20; i++) {
-      grassCtx.fillStyle = `rgba(${60 + Math.random() * 40}, ${120 + Math.random() * 40}, ${70 + Math.random() * 30}, 0.6)`;
-      grassCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 2, 4);
-    }
-    this.tileSprites['grass'] = grassCanvas;
-
-    // Stone tile with brick pattern
-    const stoneCanvas = document.createElement('canvas');
-    stoneCanvas.width = stoneCanvas.height = tileSize;
-    const stoneCtx = stoneCanvas.getContext('2d')!;
-    
-    stoneCtx.fillStyle = '#696969';
-    stoneCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Brick pattern
-    stoneCtx.strokeStyle = '#555555';
-    stoneCtx.lineWidth = 1;
-    for (let y = 0; y < tileSize; y += 8) {
-      stoneCtx.beginPath();
-      stoneCtx.moveTo(0, y);
-      stoneCtx.lineTo(tileSize, y);
-      stoneCtx.stroke();
-    }
-    for (let x = 0; x < tileSize; x += 16) {
-      stoneCtx.beginPath();
-      stoneCtx.moveTo(x, 0);
-      stoneCtx.lineTo(x, tileSize);
-      stoneCtx.stroke();
-    }
-    this.tileSprites['stone'] = stoneCanvas;
-
-    // Dirt tile with texture
-    const dirtCanvas = document.createElement('canvas');
-    dirtCanvas.width = dirtCanvas.height = tileSize;
-    const dirtCtx = dirtCanvas.getContext('2d')!;
-    
-    dirtCtx.fillStyle = '#8b4513';
-    dirtCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Add dirt texture
-    for (let i = 0; i < 30; i++) {
-      dirtCtx.fillStyle = `rgba(${100 + Math.random() * 50}, ${50 + Math.random() * 30}, ${10 + Math.random() * 20}, 0.4)`;
-      dirtCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 1, 1);
-    }
-    this.tileSprites['dirt'] = dirtCanvas;
-
-    // Water tile with animation
-    const waterCanvas = document.createElement('canvas');
-    waterCanvas.width = waterCanvas.height = tileSize;
-    const waterCtx = waterCanvas.getContext('2d')!;
-    
-    const gradient = waterCtx.createLinearGradient(0, 0, tileSize, tileSize);
-    gradient.addColorStop(0, '#4682b4');
-    gradient.addColorStop(0.5, '#5a9bd4');
-    gradient.addColorStop(1, '#4682b4');
-    waterCtx.fillStyle = gradient;
-    waterCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Add water ripples
-    waterCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-    waterCtx.lineWidth = 1;
-    for (let i = 0; i < 3; i++) {
-      waterCtx.beginPath();
-      waterCtx.arc(Math.random() * tileSize, Math.random() * tileSize, 4 + Math.random() * 4, 0, Math.PI * 2);
-      waterCtx.stroke();
-    }
-    this.tileSprites['water'] = waterCanvas;
-
-    // Building/wall tile
-    const buildingCanvas = document.createElement('canvas');
-    buildingCanvas.width = buildingCanvas.height = tileSize;
-    const buildingCtx = buildingCanvas.getContext('2d')!;
-    
-    buildingCtx.fillStyle = '#654321';
-    buildingCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Add wood grain
-    buildingCtx.strokeStyle = '#543a1a';
-    buildingCtx.lineWidth = 1;
-    for (let y = 4; y < tileSize; y += 8) {
-      buildingCtx.beginPath();
-      buildingCtx.moveTo(0, y);
-      buildingCtx.lineTo(tileSize, y);
-      buildingCtx.stroke();
-    }
-    this.tileSprites['building'] = buildingCanvas;
-
-    // Furniture tile
-    const furnitureCanvas = document.createElement('canvas');
-    furnitureCanvas.width = furnitureCanvas.height = tileSize;
-    const furnitureCtx = furnitureCanvas.getContext('2d')!;
-    
-    furnitureCtx.fillStyle = '#8B4513';
-    furnitureCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Add furniture details
-    furnitureCtx.fillStyle = '#A0522D';
-    furnitureCtx.fillRect(2, 2, tileSize - 4, tileSize - 4);
-    
-    furnitureCtx.strokeStyle = '#654321';
-    furnitureCtx.lineWidth = 2;
-    furnitureCtx.strokeRect(0, 0, tileSize, tileSize);
-    this.tileSprites['furniture'] = furnitureCanvas;
-
-    // Ruins tile
-    const ruinsCanvas = document.createElement('canvas');
-    ruinsCanvas.width = ruinsCanvas.height = tileSize;
-    const ruinsCtx = ruinsCanvas.getContext('2d')!;
-    
-    ruinsCtx.fillStyle = '#2f2f2f';
-    ruinsCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Add rubble
-    for (let i = 0; i < 10; i++) {
-      ruinsCtx.fillStyle = `rgba(${80 + Math.random() * 40}, ${80 + Math.random() * 40}, ${80 + Math.random() * 40}, 0.8)`;
-      ruinsCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 3 + Math.random() * 4, 3 + Math.random() * 4);
-    }
-    this.tileSprites['ruins'] = ruinsCanvas;
-
-    // Sand tile
-    const sandCanvas = document.createElement('canvas');
-    sandCanvas.width = sandCanvas.height = tileSize;
-    const sandCtx = sandCanvas.getContext('2d')!;
-    
-    sandCtx.fillStyle = '#f4a460';
-    sandCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Add sand texture
-    for (let i = 0; i < 50; i++) {
-      sandCtx.fillStyle = `rgba(${240 + Math.random() * 15}, ${160 + Math.random() * 20}, ${90 + Math.random() * 10}, 0.3)`;
-      sandCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 1, 1);
-    }
-    this.tileSprites['sand'] = sandCanvas;
-  }
-
-  private createCharacterSprites() {
-    const spriteSize = 24;
-    
-    // Player sprite
-    const playerCanvas = document.createElement('canvas');
-    playerCanvas.width = playerCanvas.height = spriteSize;
-    const playerCtx = playerCanvas.getContext('2d')!;
-    
-    // Body
-    playerCtx.fillStyle = '#4a90e2';
-    playerCtx.fillRect(6, 8, 12, 16);
-    
-    // Head
-    playerCtx.fillStyle = '#fdbcb4';
-    playerCtx.fillRect(8, 2, 8, 8);
-    
-    // Arms
-    playerCtx.fillStyle = '#4a90e2';
-    playerCtx.fillRect(2, 10, 4, 10);
-    playerCtx.fillRect(18, 10, 4, 10);
-    
-    // Legs
-    playerCtx.fillStyle = '#2c5aa0';
-    playerCtx.fillRect(8, 20, 3, 4);
-    playerCtx.fillRect(13, 20, 3, 4);
-    
-    this.characterSprites['player'] = playerCanvas;
-
-    // NPC sprite
-    const npcCanvas = document.createElement('canvas');
-    npcCanvas.width = npcCanvas.height = spriteSize;
-    const npcCtx = npcCanvas.getContext('2d')!;
-    
-    // Body
-    npcCtx.fillStyle = '#44ff44';
-    npcCtx.fillRect(6, 8, 12, 16);
-    
-    // Head
-    npcCtx.fillStyle = '#fdbcb4';
-    npcCtx.fillRect(8, 2, 8, 8);
-    
-    // Arms
-    npcCtx.fillStyle = '#44ff44';
-    npcCtx.fillRect(2, 10, 4, 10);
-    npcCtx.fillRect(18, 10, 4, 10);
-    
-    // Legs
-    npcCtx.fillStyle = '#2c8c2c';
-    npcCtx.fillRect(8, 20, 3, 4);
-    npcCtx.fillRect(13, 20, 3, 4);
-    
-    this.characterSprites['npc'] = npcCanvas;
-
-    // Enemy sprite
-    const enemyCanvas = document.createElement('canvas');
-    enemyCanvas.width = enemyCanvas.height = spriteSize;
-    const enemyCtx = enemyCanvas.getContext('2d')!;
-    
-    // Body
-    enemyCtx.fillStyle = '#ff0000';
-    enemyCtx.fillRect(6, 8, 12, 16);
-    
-    // Head
-    enemyCtx.fillStyle = '#cc0000';
-    enemyCtx.fillRect(8, 2, 8, 8);
-    
-    // Arms
-    enemyCtx.fillStyle = '#ff0000';
-    enemyCtx.fillRect(2, 10, 4, 10);
-    enemyCtx.fillRect(18, 10, 4, 10);
-    
-    // Legs
-    enemyCtx.fillStyle = '#aa0000';
-    enemyCtx.fillRect(8, 20, 3, 4);
-    enemyCtx.fillRect(13, 20, 3, 4);
-    
-    this.characterSprites['enemy'] = enemyCanvas;
-  }
-
-  private createUISprites() {
-    // Health bar background
-    const healthBgCanvas = document.createElement('canvas');
-    healthBgCanvas.width = 200;
-    healthBgCanvas.height = 20;
-    const healthBgCtx = healthBgCanvas.getContext('2d')!;
-    
-    healthBgCtx.fillStyle = '#333333';
-    healthBgCtx.fillRect(0, 0, 200, 20);
-    healthBgCtx.strokeStyle = '#666666';
-    healthBgCtx.lineWidth = 2;
-    healthBgCtx.strokeRect(0, 0, 200, 20);
-    
-    this.uiSprites['healthBg'] = healthBgCanvas;
-  }
-
-  private initializeLighting() {
-    // Add ambient lighting for interiors
-    this.lightingSystem = [];
-    
-    // Player light source
-    this.lightingSystem.push({
-      position: { x: 0, y: 0 },
-      radius: 100,
-      intensity: 0.8,
-      color: '#ffffff'
-    });
-  }
-
-  private detectPerformance() {
-    // Simple performance detection based on user agent and hardware
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-    const isOldBrowser = !window.requestAnimationFrame || !window.performance;
-    
-    // Check for hardware acceleration
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    const hasWebGL = !!gl;
-    
-    this.isLowPerformanceDevice = isMobile || isOldBrowser || !hasWebGL;
-    
-    if (this.isLowPerformanceDevice) {
-      this.targetFps = 30; // Lower FPS for low-end devices
-      this.frameInterval = 1000 / this.targetFps;
-      this.settings.lowGraphicsMode = true;
-      this.maxRenderSkip = 3; // Skip more frames on low-end devices
-    }
+  private initializeVisibilityMap() {
+    const map = this.gameState.currentMap;
+    this.gameState.visibilityMap = Array(map.height).fill(null).map(() => Array(map.width).fill(false));
+    this.updateVisibility();
   }
 
   private setupEventListeners() {
     // Keyboard events
     window.addEventListener('keydown', (e) => {
-      this.keys[e.key.toLowerCase()] = true;
-      this.handleKeyPress(e.key.toLowerCase());
+      this.keys.add(e.key.toLowerCase());
+      this.handleKeyPress(e);
     });
-
+    
     window.addEventListener('keyup', (e) => {
-      this.keys[e.key.toLowerCase()] = false;
+      this.keys.delete(e.key.toLowerCase());
     });
 
-    // Prevent default behavior for game keys
-    window.addEventListener('keydown', (e) => {
-      const gameKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'f', 'i', 'e', 'c', 'q', 'm', 'escape'];
-      if (gameKeys.includes(e.key.toLowerCase())) {
-        e.preventDefault();
-      }
-    });
-
-    // Handle visibility change to pause/resume game
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        this.pauseGame();
-      } else {
-        this.resumeGame();
-      }
+    // Canvas click events
+    this.canvas.addEventListener('click', (e) => {
+      this.handleCanvasClick(e);
     });
   }
 
-  private pauseGame() {
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId);
-      this.animationId = null;
+  private handleKeyPress(e: KeyboardEvent) {
+    const key = e.key.toLowerCase();
+    
+    // Prevent default for game keys
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'i', 'e', 'c', 'q', 'm', 'escape', 'f1'].includes(key)) {
+      e.preventDefault();
     }
-  }
 
-  private resumeGame() {
-    if (!this.animationId) {
-      this.lastTime = performance.now();
-      this.gameLoop(this.lastTime);
-    }
-  }
-
-  private handleKeyPress(key: string) {
-    if (this.gameState.gameMode !== 'exploration') return;
-
+    // Handle hotkeys
     switch (key) {
       case 'i':
         this.gameState.gameMode = 'inventory';
@@ -420,8 +95,7 @@ export class GameEngine {
         this.notifyStateChange();
         break;
       case 'escape':
-        // Exit building if in interior
-        if (this.gameState.currentMap.isInterior && this.gameState.previousMap) {
+        if (this.gameState.currentMap.isInterior) {
           this.exitBuilding();
         }
         break;
@@ -437,119 +111,329 @@ export class GameEngine {
         this.notifyStateChange();
         break;
       case ' ':
-      case 'f':
         this.handleInteraction();
         break;
     }
   }
 
-  private handleInteraction() {
-    const playerPos = this.gameState.player.position;
-    const interactionRange = 64; // 2 tiles for better building detection
+  private handleCanvasClick(e: MouseEvent) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     
-    // Check for enterable buildings first
-    const playerTileX = Math.floor(playerPos.x / 32);
-    const playerTileY = Math.floor(playerPos.y / 32);
+    // Convert screen coordinates to world coordinates
+    const worldX = x + this.gameState.camera.x;
+    const worldY = y + this.gameState.camera.y;
     
-    // Check surrounding tiles for enterable buildings
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        const checkY = playerTileY + dy;
-        const checkX = playerTileX + dx;
-        const tile = this.gameState.currentMap.tiles[checkY]?.[checkX];
+    // Handle click interactions
+    this.handleWorldClick(worldX, worldY);
+  }
+
+  private handleWorldClick(worldX: number, worldY: number) {
+    // Check for NPC interactions
+    const clickedNPC = this.gameState.currentMap.npcs.find(npc => {
+      const distance = Math.sqrt(
+        Math.pow(npc.position.x - worldX, 2) + 
+        Math.pow(npc.position.y - worldY, 2)
+      );
+      return distance < 32; // 32 pixel interaction radius
+    });
+
+    if (clickedNPC) {
+      this.startDialogue(clickedNPC);
+      return;
+    }
+
+    // Check for lootable interactions
+    const clickedLootable = this.gameState.currentMap.lootables.find(lootable => {
+      const distance = Math.sqrt(
+        Math.pow(lootable.position.x - worldX, 2) + 
+        Math.pow(lootable.position.y - worldY, 2)
+      );
+      return distance < 32 && !lootable.looted;
+    });
+
+    if (clickedLootable) {
+      this.openLootable(clickedLootable);
+      return;
+    }
+  }
+
+  private gameLoop(currentTime: number) {
+    const deltaTime = currentTime - this.lastTime;
+    this.lastTime = currentTime;
+
+    // Update game state
+    this.update(deltaTime);
+    
+    // Render
+    this.render();
+    
+    // Continue loop
+    this.animationId = requestAnimationFrame((time) => this.gameLoop(time));
+  }
+
+  private update(deltaTime: number) {
+    // Update game time
+    this.gameState.gameTime += deltaTime / 1000;
+    this.gameState.dayNightCycle = (this.gameState.gameTime / 300) % 1; // 5 minute day cycle
+    
+    // Update player movement
+    this.updatePlayerMovement(deltaTime);
+    
+    // Update enemies
+    this.updateEnemies(deltaTime);
+    
+    // Update skill cooldowns
+    this.updateSkillCooldowns(deltaTime);
+    
+    // Update visibility
+    this.updateVisibility();
+    
+    // Update camera
+    this.updateCamera();
+    
+    // Check for combat initiation
+    this.checkCombatInitiation();
+  }
+
+  private updatePlayerMovement(deltaTime: number) {
+    if (this.gameState.gameMode !== 'exploration') return;
+    
+    const now = Date.now();
+    if (now - this.lastMoveTime < this.moveDelay) return;
+
+    const player = this.gameState.player;
+    const moveSpeed = 32; // Move one tile at a time
+    let newX = player.position.x;
+    let newY = player.position.y;
+    let moved = false;
+
+    // Handle movement input
+    if (this.keys.has('w') || this.keys.has('arrowup')) {
+      newY -= moveSpeed;
+      player.direction = 'up';
+      moved = true;
+    } else if (this.keys.has('s') || this.keys.has('arrowdown')) {
+      newY += moveSpeed;
+      player.direction = 'down';
+      moved = true;
+    } else if (this.keys.has('a') || this.keys.has('arrowleft')) {
+      newX -= moveSpeed;
+      player.direction = 'left';
+      moved = true;
+    } else if (this.keys.has('d') || this.keys.has('arrowright')) {
+      newX += moveSpeed;
+      player.direction = 'right';
+      moved = true;
+    }
+
+    if (moved) {
+      // Check if the new position is valid
+      if (this.isValidPosition(newX, newY)) {
+        player.position.x = newX;
+        player.position.y = newY;
+        this.lastMoveTime = now;
         
-        if (tile?.isEnterable && tile.buildingId) {
-          this.enterBuilding(tile.buildingId);
-          return;
+        // Update statistics
+        this.gameState.statistics.distanceTraveled += moveSpeed;
+        
+        // Check for map transitions
+        this.checkMapTransitions();
+        
+        // Mark tiles as discovered
+        this.discoverNearbyTiles();
+      }
+    }
+  }
+
+  private isValidPosition(x: number, y: number): boolean {
+    const tileX = Math.floor(x / 32);
+    const tileY = Math.floor(y / 32);
+    
+    const map = this.gameState.currentMap;
+    if (tileX < 0 || tileX >= map.width || tileY < 0 || tileY >= map.height) {
+      return false;
+    }
+    
+    const tile = map.tiles[tileY][tileX];
+    return tile.walkable;
+  }
+
+  private checkMapTransitions() {
+    const player = this.gameState.player;
+    const map = this.gameState.currentMap;
+    
+    // Check for map edge transitions
+    const tileX = Math.floor(player.position.x / 32);
+    const tileY = Math.floor(player.position.y / 32);
+    
+    // Check connections
+    for (const connection of map.connections) {
+      const connectionTileX = Math.floor(connection.fromPosition.x / 32);
+      const connectionTileY = Math.floor(connection.fromPosition.y / 32);
+      
+      if (tileX === connectionTileX && tileY === connectionTileY) {
+        this.transitionToMap(connection.targetMapId, connection.toPosition);
+        break;
+      }
+    }
+  }
+
+  private transitionToMap(mapId: string, newPosition: Position) {
+    // Load the target map if not already loaded
+    if (!this.gameState.availableMaps[mapId]) {
+      this.gameState.availableMaps[mapId] = this.allMaps[mapId];
+    }
+    
+    // Store current map state
+    this.gameState.availableMaps[this.gameState.currentMap.id] = this.gameState.currentMap;
+    
+    // Switch to new map
+    this.gameState.currentMap = this.gameState.availableMaps[mapId];
+    this.gameState.player.position = { ...newPosition };
+    
+    // Initialize visibility for new map
+    this.initializeVisibilityMap();
+    
+    this.notifyStateChange();
+  }
+
+  private discoverNearbyTiles() {
+    const player = this.gameState.player;
+    const tileX = Math.floor(player.position.x / 32);
+    const tileY = Math.floor(player.position.y / 32);
+    const map = this.gameState.currentMap;
+    
+    // Discover tiles in a radius around the player
+    const radius = 2;
+    for (let y = tileY - radius; y <= tileY + radius; y++) {
+      for (let x = tileX - radius; x <= tileX + radius; x++) {
+        if (x >= 0 && x < map.width && y >= 0 && y < map.height) {
+          map.tiles[y][x].discovered = true;
         }
+      }
+    }
+  }
+
+  private updateEnemies(deltaTime: number) {
+    this.gameState.currentMap.enemies.forEach(enemy => {
+      // Simple AI: move towards player if in range
+      const distance = Math.sqrt(
+        Math.pow(enemy.position.x - this.gameState.player.position.x, 2) + 
+        Math.pow(enemy.position.y - this.gameState.player.position.y, 2)
+      );
+      
+      if (distance < enemy.ai.range * 32 && distance > 32) {
+        // Move towards player
+        const dx = this.gameState.player.position.x - enemy.position.x;
+        const dy = this.gameState.player.position.y - enemy.position.y;
+        const magnitude = Math.sqrt(dx * dx + dy * dy);
+        
+        if (magnitude > 0) {
+          const moveX = (dx / magnitude) * enemy.ai.speed * (deltaTime / 1000);
+          const moveY = (dy / magnitude) * enemy.ai.speed * (deltaTime / 1000);
+          
+          const newX = enemy.position.x + moveX;
+          const newY = enemy.position.y + moveY;
+          
+          if (this.isValidPosition(newX, newY)) {
+            enemy.position.x = newX;
+            enemy.position.y = newY;
+          }
+        }
+      }
+    });
+  }
+
+  private updateSkillCooldowns(deltaTime: number) {
+    // Update player skill cooldowns
+    this.gameState.player.skills.forEach(skill => {
+      if (skill.currentCooldown > 0) {
+        skill.currentCooldown = Math.max(0, skill.currentCooldown - deltaTime / 1000);
+      }
+    });
+    
+    // Update party skill cooldowns
+    this.gameState.party.forEach(character => {
+      character.skills.forEach(skill => {
+        if (skill.currentCooldown > 0) {
+          skill.currentCooldown = Math.max(0, skill.currentCooldown - deltaTime / 1000);
+        }
+      });
+    });
+  }
+
+  private updateVisibility() {
+    const player = this.gameState.player;
+    const tileX = Math.floor(player.position.x / 32);
+    const tileY = Math.floor(player.position.y / 32);
+    const map = this.gameState.currentMap;
+    
+    // Reset visibility
+    for (let y = 0; y < map.height; y++) {
+      for (let x = 0; x < map.width; x++) {
+        this.gameState.visibilityMap[y][x] = false;
       }
     }
     
-    // Check for nearby building entrances
-    const nearbyBuilding = getBuildingByPosition(playerPos, interactionRange);
-    if (nearbyBuilding) {
-      this.enterBuilding(nearbyBuilding.id);
-      return;
-    }
-
-    // Check for NPCs
-    const nearbyNPC = this.gameState.currentMap.npcs.find(npc => {
-      const distance = Math.sqrt(
-        Math.pow(npc.position.x - playerPos.x, 2) + 
-        Math.pow(npc.position.y - playerPos.y, 2)
-      );
-      return distance <= interactionRange;
-    });
-
-    if (nearbyNPC) {
-      this.startDialogue(nearbyNPC);
-      return;
-    }
-
-    // Check for enemies (start combat)
-    const nearbyEnemy = this.gameState.currentMap.enemies.find(enemy => {
-      const distance = Math.sqrt(
-        Math.pow(enemy.position.x - playerPos.x, 2) + 
-        Math.pow(enemy.position.y - playerPos.y, 2)
-      );
-      return distance <= interactionRange;
-    });
-
-    if (nearbyEnemy) {
-      this.startCombat([nearbyEnemy]);
-      return;
-    }
-
-    // Check for lootables
-    const nearbyLootable = this.gameState.currentMap.lootables.find((lootable, index) => {
-      if (lootable.looted) return false;
-      const distance = Math.sqrt(
-        Math.pow(lootable.position.x - playerPos.x, 2) + 
-        Math.pow(lootable.position.y - playerPos.y, 2)
-      );
-      if (distance <= interactionRange) {
-        lootable.looted = true;
-        return true;
-      }
-      return false;
-    });
-
-    if (nearbyLootable && this.lootableCallback) {
-      this.lootableCallback(nearbyLootable);
-      
-      setTimeout(() => {
-        const lootIndex = this.gameState.currentMap.lootables.findIndex(l => l.id === nearbyLootable.id);
-        if (lootIndex >= 0) {
-          this.gameState.currentMap.lootables.splice(lootIndex, 1);
-          this.notifyStateChange();
+    // Set visible tiles around player
+    const visionRadius = 8;
+    for (let y = tileY - visionRadius; y <= tileY + visionRadius; y++) {
+      for (let x = tileX - visionRadius; x <= tileX + visionRadius; x++) {
+        if (x >= 0 && x < map.width && y >= 0 && y < map.height) {
+          const distance = Math.sqrt((x - tileX) ** 2 + (y - tileY) ** 2);
+          if (distance <= visionRadius) {
+            this.gameState.visibilityMap[y][x] = true;
+            map.tiles[y][x].visible = true;
+          }
         }
-      }, 100);
-      return;
+      }
     }
   }
 
-  private startDialogue(npc: NPC) {
-    if (npc.dialogue.length > 0) {
-      const firstNode = npc.dialogue[0];
-      this.gameState.dialogue = {
-        npcId: npc.id,
-        currentNode: firstNode.id,
-        history: [`${npc.name}: ${firstNode.text}`],
-        choices: firstNode.choices
-      };
-      this.gameState.gameMode = 'dialogue';
-      this.notifyStateChange();
+  private updateCamera() {
+    const player = this.gameState.player;
+    const targetX = player.position.x - this.canvas.width / 2;
+    const targetY = player.position.y - this.canvas.height / 2;
+    
+    // Smooth camera movement
+    this.gameState.camera.x += (targetX - this.gameState.camera.x) * 0.1;
+    this.gameState.camera.y += (targetY - this.gameState.camera.y) * 0.1;
+    
+    // Clamp camera to map bounds
+    const map = this.gameState.currentMap;
+    this.gameState.camera.x = Math.max(0, Math.min(this.gameState.camera.x, map.width * 32 - this.canvas.width));
+    this.gameState.camera.y = Math.max(0, Math.min(this.gameState.camera.y, map.height * 32 - this.canvas.height));
+  }
+
+  private checkCombatInitiation() {
+    if (this.gameState.combat) return; // Already in combat
+    
+    const player = this.gameState.player;
+    const nearbyEnemies = this.gameState.currentMap.enemies.filter(enemy => {
+      const distance = Math.sqrt(
+        Math.pow(enemy.position.x - player.position.x, 2) + 
+        Math.pow(enemy.position.y - player.position.y, 2)
+      );
+      return distance < 32; // Touch distance
+    });
+    
+    if (nearbyEnemies.length > 0) {
+      this.initiateCombat(nearbyEnemies);
     }
   }
 
-  private startCombat(enemies: Enemy[]) {
+  private initiateCombat(enemies: Enemy[]) {
     const participants = [this.gameState.player, ...enemies];
+    
+    // Sort by agility for turn order
     const turnOrder = [...participants].sort((a, b) => {
       const aAgility = 'stats' in a ? a.stats.agility : 5;
       const bAgility = 'stats' in b ? b.stats.agility : 5;
       return bAgility - aAgility;
     });
-
+    
     this.gameState.combat = {
       participants,
       turnOrder,
@@ -559,8 +443,8 @@ export class GameEngine {
       animations: [],
       battleground: this.gameState.currentMap.tiles,
       weather: this.gameState.weather,
-      timeOfDay: 'day',
-      isPlayerTurn: turnOrder[0] === this.gameState.player,
+      timeOfDay: this.getTimeOfDay(),
+      isPlayerTurn: 'class' in turnOrder[0],
       combatLog: ['Combat begins!']
     };
     
@@ -568,1078 +452,297 @@ export class GameEngine {
     this.notifyStateChange();
   }
 
-  private updatePlayerMovement(deltaTime: number) {
-    if (this.gameState.gameMode !== 'exploration') return;
-    if (this.isTransitioning) return;
-
-    if (this.transitionCooldown > 0) {
-      this.transitionCooldown -= deltaTime;
-    }
-
-    // Movement speed
-    const speed = this.isLowPerformanceDevice ? 96 : 128;
-    const moveDistance = speed * (deltaTime / 1000);
+  public handleCombatAction(action: string, targetIndex?: number) {
+    if (!this.gameState.combat) return;
     
-    let newX = this.gameState.player.position.x;
-    let newY = this.gameState.player.position.y;
-    let moved = false;
-    let direction = this.gameState.player.direction;
-
-    // Handle diagonal movement
-    let moveX = 0;
-    let moveY = 0;
-
-    if (this.keys['w'] || this.keys['arrowup']) {
-      moveY = -1;
-    }
-    if (this.keys['s'] || this.keys['arrowdown']) {
-      moveY = 1;
-    }
-    if (this.keys['a'] || this.keys['arrowleft']) {
-      moveX = -1;
-    }
-    if (this.keys['d'] || this.keys['arrowright']) {
-      moveX = 1;
-    }
-
-    // Normalize diagonal movement
-    if (moveX !== 0 && moveY !== 0) {
-      moveX *= 0.707; // sqrt(2)/2 for diagonal normalization
-      moveY *= 0.707;
-    }
-
-    if (moveX !== 0 || moveY !== 0) {
-      newX += moveX * moveDistance;
-      newY += moveY * moveDistance;
-      moved = true;
-
-      // Update direction based on movement
-      if (moveX > 0) direction = 'right';
-      else if (moveX < 0) direction = 'left';
-      else if (moveY > 0) direction = 'down';
-      else if (moveY < 0) direction = 'up';
-
-      this.gameState.player.direction = direction;
-    }
-
-    if (moved) {
-      const mapWidth = this.gameState.currentMap.width * 32;
-      const mapHeight = this.gameState.currentMap.height * 32;
-      
-      const atEdge = newX < 16 || newX >= mapWidth - 16 || newY < 16 || newY >= mapHeight - 16;
-      
-      if (atEdge && this.transitionCooldown <= 0) {
-        let currentEdgeDirection: 'north' | 'south' | 'east' | 'west' | null = null;
-        if (newX < 16) currentEdgeDirection = 'west';
-        else if (newX >= mapWidth - 16) currentEdgeDirection = 'east';
-        else if (newY < 16) currentEdgeDirection = 'north';
-        else if (newY >= mapHeight - 16) currentEdgeDirection = 'south';
-        
-        if (!this.isAtEdge || this.edgeDirection !== currentEdgeDirection) {
-          this.isAtEdge = true;
-          this.edgeDirection = currentEdgeDirection;
-          this.edgeTimer = 0;
-        } else {
-          this.edgeTimer += deltaTime;
-          
-          if (this.edgeTimer >= 2000) {
-            this.handleMapTransition(newX, newY, mapWidth, mapHeight);
-            return;
-          }
-        }
-      } else {
-        this.isAtEdge = false;
-        this.edgeDirection = null;
-        this.edgeTimer = 0;
-      }
-
-      const tileX = Math.floor(newX / 32);
-      const tileY = Math.floor(newY / 32);
-      
-      if (this.isValidPosition(tileX, tileY)) {
-        this.gameState.player.position.x = newX;
-        this.gameState.player.position.y = newY;
-        this.gameState.player.isMoving = true;
-        
-        // Update lighting position
-        this.lightingSystem[0].position = { x: newX, y: newY };
-        
-        // Only update camera and visibility if player moved significantly
-        const playerMoved = Math.abs(newX - this.lastPlayerPosition.x) > 8 || 
-                           Math.abs(newY - this.lastPlayerPosition.y) > 8;
-        
-        if (playerMoved) {
-          this.updateCamera();
-          this.updateVisibility();
-          this.lastPlayerPosition = { x: newX, y: newY };
-          this.cacheInvalidated = true;
-        }
-        
-        this.gameState.statistics.distanceTraveled += moveDistance;
-      }
+    const combat = this.gameState.combat;
+    const currentActor = combat.turnOrder[combat.currentTurn];
+    
+    if (action === 'basic_attack' && targetIndex !== undefined) {
+      const target = combat.participants[targetIndex];
+      this.performAttack(currentActor, target);
     } else {
-      this.gameState.player.isMoving = false;
+      // Handle skill usage
+      const skill = currentActor.skills.find(s => s.id === action);
+      if (skill && targetIndex !== undefined) {
+        const target = combat.participants[targetIndex];
+        this.performSkill(currentActor, target, skill);
+      }
     }
+    
+    // Advance turn
+    this.advanceCombatTurn();
   }
 
-  private handleMapTransition(newX: number, newY: number, mapWidth: number, mapHeight: number) {
-    if (this.isTransitioning || this.transitionCooldown > 0) return;
+  private performAttack(attacker: Character | Enemy, target: Character | Enemy) {
+    if (!this.gameState.combat) return;
     
-    this.isAtEdge = false;
-    this.edgeDirection = null;
-    this.edgeTimer = 0;
+    // Calculate damage
+    const baseDamage = 'damage' in attacker ? attacker.damage : 10;
+    const attackerDamage = 'equipment' in attacker && attacker.equipment.weapon?.stats?.damage 
+      ? baseDamage + attacker.equipment.weapon.stats.damage 
+      : baseDamage;
     
-    this.isTransitioning = true;
-    this.transitionCooldown = 1000;
+    const targetDefense = 'defense' in target ? target.defense : 0;
+    const equipmentDefense = 'equipment' in target && target.equipment.armor?.stats?.defense 
+      ? target.equipment.armor.stats.defense 
+      : 0;
     
-    let direction: 'north' | 'south' | 'east' | 'west' | null = null;
+    const totalDefense = targetDefense + equipmentDefense;
+    const finalDamage = Math.max(1, attackerDamage - totalDefense);
     
-    if (newX < 16) direction = 'west';
-    else if (newX >= mapWidth - 16) direction = 'east';
-    else if (newY < 16) direction = 'north';
-    else if (newY >= mapHeight - 16) direction = 'south';
+    // Apply damage
+    target.health = Math.max(0, target.health - finalDamage);
     
-    if (!direction) {
-      this.isTransitioning = false;
-      return;
+    // Add to combat log
+    const attackerName = 'name' in attacker ? attacker.name : 'Enemy';
+    const targetName = 'name' in target ? target.name : 'Enemy';
+    this.gameState.combat.combatLog.push(`${attackerName} attacks ${targetName} for ${finalDamage} damage!`);
+    
+    // Check if target is defeated
+    if (target.health <= 0) {
+      this.handleCombatDefeat(target);
     }
     
-    const connection = this.gameState.currentMap.connections.find(conn => conn.direction === direction);
-    if (!connection) {
-      this.isTransitioning = false;
-      return;
-    }
-    
-    let targetMap = this.loadedMaps[connection.targetMapId];
-    if (!targetMap) {
-      const createMapFn = maps[connection.targetMapId as keyof typeof maps];
-      if (createMapFn) {
-        targetMap = createMapFn();
-        this.loadedMaps[connection.targetMapId] = targetMap;
-      } else {
-        this.isTransitioning = false;
-        return;
-      }
-    }
-    
-    let targetPosition: Position;
-    const safeMargin = 64;
-    
-    switch (direction) {
-      case 'north':
-        targetPosition = { 
-          x: Math.max(safeMargin, Math.min(connection.toPosition.x, (targetMap.width - 2) * 32)), 
-          y: (targetMap.height - 3) * 32 
-        };
-        break;
-      case 'south':
-        targetPosition = { 
-          x: Math.max(safeMargin, Math.min(connection.toPosition.x, (targetMap.width - 2) * 32)), 
-          y: safeMargin 
-        };
-        break;
-      case 'east':
-        targetPosition = { 
-          x: safeMargin, 
-          y: Math.max(safeMargin, Math.min(connection.toPosition.y, (targetMap.height - 2) * 32)) 
-        };
-        break;
-      case 'west':
-        targetPosition = { 
-          x: (targetMap.width - 3) * 32, 
-          y: Math.max(safeMargin, Math.min(connection.toPosition.y, (targetMap.height - 2) * 32)) 
-        };
-        break;
-      default:
-        this.isTransitioning = false;
-        return;
-    }
-    
-    this.gameState.currentMap = targetMap;
-    this.gameState.player.position = { ...targetPosition };
-    
-    const tileX = Math.floor(this.gameState.player.position.x / 32);
-    const tileY = Math.floor(this.gameState.player.position.y / 32);
-    
-    if (!this.isValidPosition(tileX, tileY)) {
-      let found = false;
-      for (let radius = 1; radius <= 10 && !found; radius++) {
-        for (let dy = -radius; dy <= radius && !found; dy++) {
-          for (let dx = -radius; dx <= radius && !found; dx++) {
-            if (Math.abs(dx) === radius || Math.abs(dy) === radius) {
-              const checkX = tileX + dx;
-              const checkY = tileY + dy;
-              if (this.isValidPosition(checkX, checkY)) {
-                this.gameState.player.position.x = checkX * 32 + 16;
-                this.gameState.player.position.y = checkY * 32 + 16;
-                found = true;
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    // Clear caches for new map
-    this.visibleTileCache = {};
-    this.lastCameraPosition = { x: -1, y: -1 };
-    
-    this.updateCamera();
-    this.updateVisibility();
     this.notifyStateChange();
-    
-    setTimeout(() => {
-      this.isTransitioning = false;
-    }, 500);
   }
 
-  private isValidPosition(tileX: number, tileY: number): boolean {
-    if (tileX < 0 || tileY < 0 || 
-        tileY >= this.gameState.currentMap.tiles.length || 
-        tileX >= this.gameState.currentMap.tiles[0].length) {
-      return false;
+  private performSkill(attacker: Character | Enemy, target: Character | Enemy, skill: any) {
+    if (!this.gameState.combat) return;
+    
+    // Check energy cost
+    if (attacker.energy < skill.energyCost) {
+      return;
     }
     
-    const tile = this.gameState.currentMap.tiles[tileY][tileX];
-    return tile.walkable;
-  }
-
-  private updateCamera() {
-    const centerX = this.canvas.width / 2;
-    const centerY = this.canvas.height / 2;
+    // Consume energy
+    attacker.energy -= skill.energyCost;
     
-    const newCameraX = this.gameState.player.position.x - centerX;
-    const newCameraY = this.gameState.player.position.y - centerY;
-    
-    // Use actual tile array dimensions instead of declared map dimensions
-    const actualMapHeight = this.gameState.currentMap.tiles.length;
-    const actualMapWidth = this.gameState.currentMap.tiles[0]?.length || 0;
-    const mapWidth = actualMapWidth * 32;
-    const mapHeight = actualMapHeight * 32;
-    
-    this.gameState.camera.x = Math.max(0, Math.min(newCameraX, mapWidth - this.canvas.width));
-    this.gameState.camera.y = Math.max(0, Math.min(newCameraY, mapHeight - this.canvas.height));
-
-    // Update render bounds only if camera moved significantly
-    if (Math.abs(this.gameState.camera.x - this.lastCameraPosition.x) > 32 || 
-        Math.abs(this.gameState.camera.y - this.lastCameraPosition.y) > 32) {
+    // Apply skill effects
+    if (skill.damage) {
+      const finalDamage = Math.max(1, skill.damage);
+      target.health = Math.max(0, target.health - finalDamage);
       
-      this.renderBounds.startX = Math.max(0, Math.floor(this.gameState.camera.x / 32) - 1);
-      this.renderBounds.startY = Math.max(0, Math.floor(this.gameState.camera.y / 32) - 1);
-      this.renderBounds.endX = Math.min(this.renderBounds.startX + Math.ceil(this.canvas.width / 32) + 3, actualMapWidth);
-      this.renderBounds.endY = Math.min(this.renderBounds.startY + Math.ceil(this.canvas.height / 32) + 3, actualMapHeight);
+      const attackerName = 'name' in attacker ? attacker.name : 'Enemy';
+      const targetName = 'name' in target ? target.name : 'Enemy';
+      this.gameState.combat.combatLog.push(`${attackerName} uses ${skill.name} on ${targetName} for ${finalDamage} damage!`);
+    }
+    
+    if (skill.healing) {
+      const healAmount = skill.healing;
+      target.health = Math.min(target.maxHealth, target.health + healAmount);
       
-      this.lastCameraPosition = { ...this.gameState.camera };
-      this.cacheInvalidated = true;
+      const attackerName = 'name' in attacker ? attacker.name : 'Enemy';
+      const targetName = 'name' in target ? target.name : 'Enemy';
+      this.gameState.combat.combatLog.push(`${attackerName} heals ${targetName} for ${healAmount} health!`);
     }
+    
+    // Set cooldown
+    skill.currentCooldown = skill.cooldown;
+    
+    // Check if target is defeated
+    if (target.health <= 0) {
+      this.handleCombatDefeat(target);
+    }
+    
+    this.notifyStateChange();
   }
 
-  private updateVisibility() {
-    const playerTileX = Math.floor(this.gameState.player.position.x / 32);
-    const playerTileY = Math.floor(this.gameState.player.position.y / 32);
-    const visionRange = this.isLowPerformanceDevice ? 6 : 10;
+  private handleCombatDefeat(defeated: Character | Enemy) {
+    if (!this.gameState.combat) return;
     
-    const actualMapHeight = this.gameState.currentMap.tiles.length;
-    const actualMapWidth = this.gameState.currentMap.tiles[0]?.length || 0;
+    const defeatedName = 'name' in defeated ? defeated.name : 'Enemy';
+    this.gameState.combat.combatLog.push(`${defeatedName} is defeated!`);
     
-    if (!this.gameState.visibilityMap || this.gameState.visibilityMap.length !== actualMapHeight) {
-      this.gameState.visibilityMap = Array(actualMapHeight)
-        .fill(null)
-        .map(() => Array(actualMapWidth).fill(false));
-    }
-    
-    // Only update visibility for tiles in a smaller area around player
-    const visibilityBounds = {
-      startX: Math.max(0, playerTileX - visionRange - 2),
-      startY: Math.max(0, playerTileY - visionRange - 2),
-      endX: Math.min(actualMapWidth, playerTileX + visionRange + 3),
-      endY: Math.min(actualMapHeight, playerTileY + visionRange + 3)
-    };
-    
-    for (let y = visibilityBounds.startY; y < visibilityBounds.endY; y++) {
-      for (let x = visibilityBounds.startX; x < visibilityBounds.endX; x++) {
-        if (y >= 0 && y < actualMapHeight && x >= 0 && x < actualMapWidth) {
-          this.gameState.currentMap.tiles[y][x].visible = false;
-        }
-      }
-    }
-    
-    // Set visibility around player
-    const minY = Math.max(0, playerTileY - visionRange);
-    const maxY = Math.min(actualMapHeight, playerTileY + visionRange + 1);
-    const minX = Math.max(0, playerTileX - visionRange);
-    const maxX = Math.min(actualMapWidth, playerTileX + visionRange + 1);
-    
-    for (let y = minY; y < maxY; y++) {
-      for (let x = minX; x < maxX; x++) {
-        if (y >= 0 && y < actualMapHeight && x >= 0 && x < actualMapWidth) {
-          const distance = Math.sqrt(Math.pow(x - playerTileX, 2) + Math.pow(y - playerTileY, 2));
-          if (distance <= visionRange) {
-            this.gameState.currentMap.tiles[y][x].visible = true;
-            this.gameState.currentMap.tiles[y][x].discovered = true;
-            this.gameState.visibilityMap[y][x] = true;
-          }
-        }
-      }
-    }
-  }
-
-  private gameLoop(currentTime: number) {
-    // Improved frame rate limiting with skip logic
-    const deltaTime = currentTime - this.lastTime;
-    
-    if (deltaTime >= this.frameInterval) {
-      this.lastTime = currentTime - (deltaTime % this.frameInterval);
+    // If it's an enemy, give rewards
+    if (!('class' in defeated)) {
+      const enemy = defeated as Enemy;
       
-      // Update game logic
-      this.updatePlayerMovement(deltaTime);
-      this.updateGameTime(deltaTime);
-      this.updateParticles(deltaTime);
-
-      // Smart rendering - skip frames when performance is poor
-      const shouldRender = this.renderSkipCounter >= this.maxRenderSkip || 
-                          (currentTime - this.lastRenderTime >= this.frameInterval * 2);
+      // Give experience
+      this.gameState.player.experience += enemy.experience;
+      this.gameState.statistics.enemiesKilled++;
       
-      if (shouldRender) {
-        this.render();
-        this.lastRenderTime = currentTime;
-        this.renderSkipCounter = 0;
-      } else {
-        this.renderSkipCounter++;
-      }
-    }
-
-    // Continue loop
-    this.animationId = requestAnimationFrame((time) => this.gameLoop(time));
-  }
-
-  private updateGameTime(deltaTime: number) {
-    this.gameState.gameTime += deltaTime / 1000;
-    this.gameState.statistics.playtime += deltaTime / 1000;
-    
-    const dayLength = 24 * 60;
-    this.gameState.dayNightCycle = (this.gameState.gameTime % dayLength) / dayLength;
-  }
-
-  private updateParticles(deltaTime: number) {
-    // Update particle system
-    this.particleSystem = this.particleSystem.filter(particle => {
-      particle.life -= deltaTime / 1000;
-      particle.position.x += particle.velocity.x * deltaTime / 1000;
-      particle.position.y += particle.velocity.y * deltaTime / 1000;
-      particle.velocity.y += 50 * deltaTime / 1000; // Gravity
-      return particle.life > 0;
-    });
-  }
-
-  private render() {
-    // Clear canvas with gradient background
-    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-    
-    if (this.gameState.currentMap.isInterior) {
-      gradient.addColorStop(0, '#2a2a2a');
-      gradient.addColorStop(1, '#1a1a1a');
-    } else {
-      // Outdoor gradient based on time of day
-      const timeOfDay = this.gameState.dayNightCycle;
-      if (timeOfDay < 0.25 || timeOfDay > 0.75) { // Night
-        gradient.addColorStop(0, '#0a0a2a');
-        gradient.addColorStop(1, '#000015');
-      } else if (timeOfDay < 0.5) { // Day
-        gradient.addColorStop(0, '#87CEEB');
-        gradient.addColorStop(1, '#98D8E8');
-      } else { // Evening
-        gradient.addColorStop(0, '#FF6B35');
-        gradient.addColorStop(1, '#F7931E');
-      }
-    }
-    
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Render game world
-    this.renderTiles();
-    this.renderLootables();
-    this.renderNPCs();
-    this.renderEnemies();
-    this.renderPlayer();
-    this.renderParticles();
-    this.renderLighting();
-    this.renderUI();
-    
-    if (this.isAtEdge && this.edgeTimer > 0) {
-      this.renderEdgeTimer();
-    }
-  }
-  
-  private renderEdgeTimer() {
-    const progress = this.edgeTimer / 2000;
-    const barWidth = 300;
-    const barHeight = 30;
-    const x = (this.canvas.width - barWidth) / 2;
-    const y = 50;
-    
-    // Background
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    this.ctx.fillRect(x - 20, y - 20, barWidth + 40, barHeight + 60);
-    
-    // Progress bar background
-    this.ctx.fillStyle = '#333333';
-    this.ctx.fillRect(x, y, barWidth, barHeight);
-    
-    // Progress bar fill
-    const progressGradient = this.ctx.createLinearGradient(x, y, x + barWidth, y);
-    progressGradient.addColorStop(0, '#ffaa00');
-    progressGradient.addColorStop(1, '#ff6600');
-    this.ctx.fillStyle = progressGradient;
-    this.ctx.fillRect(x, y, barWidth * progress, barHeight);
-    
-    // Border
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(x, y, barWidth, barHeight);
-    
-    // Text
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 16px Arial';
-    this.ctx.textAlign = 'center';
-    this.ctx.fillText(
-      `Transitioning to ${this.edgeDirection}... ${Math.ceil((2000 - this.edgeTimer) / 1000)}s`,
-      this.canvas.width / 2,
-      y + barHeight + 35
-    );
-  }
-
-  private renderTiles() {
-    const actualMapHeight = this.gameState.currentMap.tiles.length;
-    const actualMapWidth = this.gameState.currentMap.tiles[0]?.length || 0;
-    
-    const isInterior = this.gameState.currentMap.isInterior;
-    
-    const startY = Math.max(0, Math.min(this.renderBounds.startY, actualMapHeight - 1));
-    const endY = Math.min(this.renderBounds.endY, actualMapHeight);
-    const startX = Math.max(0, Math.min(this.renderBounds.startX, actualMapWidth - 1));
-    const endX = Math.min(this.renderBounds.endX, actualMapWidth);
-    
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
-        if (!this.gameState.currentMap.tiles[y] || !this.gameState.currentMap.tiles[y][x]) {
-          continue;
-        }
+      // Check for level up
+      while (this.gameState.player.experience >= this.gameState.player.experienceToNext) {
+        this.gameState.player.experience -= this.gameState.player.experienceToNext;
+        this.gameState.player.level++;
+        this.gameState.player.experienceToNext = this.gameState.player.level * 100;
+        this.gameState.player.maxHealth += 10;
+        this.gameState.player.maxEnergy += 5;
+        this.gameState.player.health = this.gameState.player.maxHealth;
+        this.gameState.player.energy = this.gameState.player.maxEnergy;
         
-        const tile = this.gameState.currentMap.tiles[y][x];
-        
-        if (!isInterior && !tile.discovered) continue;
-
-        const screenX = x * 32 - this.gameState.camera.x;
-        const screenY = y * 32 - this.gameState.camera.y;
-
-        // Skip tiles that are completely off-screen
-        if (screenX < -32 || screenX > this.canvas.width || 
-            screenY < -32 || screenY > this.canvas.height) continue;
-
-        // Render terrain tile
-        if (tile.type !== 'building') {
-          // Use sprite if available, otherwise fallback to color
-          const sprite = this.tileSprites[tile.type];
-          if (sprite) {
-            this.ctx.drawImage(sprite, screenX, screenY);
-          } else {
-            this.ctx.fillStyle = this.getTileColor(tile.type);
-            this.ctx.fillRect(screenX, screenY, 32, 32);
-          }
-        } else {
-          // Render building with enhanced graphics
-          this.renderBuilding(tile, screenX, screenY);
+        this.gameState.combat.combatLog.push(`${this.gameState.player.name} reached level ${this.gameState.player.level}!`);
+      }
+      
+      // Give loot
+      enemy.loot.forEach(lootDrop => {
+        if (Math.random() < lootDrop.chance) {
+          const item = { ...lootDrop.item, quantity: lootDrop.quantity };
+          this.gameState.inventory.push(item);
+          this.gameState.combat!.combatLog.push(`Found: ${item.name} x${lootDrop.quantity}`);
         }
-
-        // Apply darkness for non-visible exterior tiles
-        if (!isInterior && !tile.visible) {
-          this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-          this.ctx.fillRect(screenX, screenY, 32, 32);
-        }
-        
-        // Render entrance indicator for enterable buildings
-        if (!isInterior && tile.isEnterable && tile.visible) {
-          this.ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
-          this.ctx.fillRect(screenX + 8, screenY + 8, 16, 16);
-          this.ctx.fillStyle = '#000000';
-          this.ctx.font = 'bold 14px Arial';
-          this.ctx.textAlign = 'center';
-          this.ctx.fillText('E', screenX + 16, screenY + 20);
-        }
-      }
-    }
-  }
-
-  private renderBuilding(tile: Tile, x: number, y: number) {
-    // Building base
-    this.ctx.fillStyle = this.getBuildingColor(tile.buildingType || 'default');
-    this.ctx.fillRect(x, y, 32, 32);
-    
-    // Building details
-    if (!this.settings.lowGraphicsMode) {
-      // Add building texture and details
-      this.ctx.save();
-      
-      // Building shadow
-      this.ctx.globalAlpha = 0.3;
-      this.ctx.fillStyle = '#000000';
-      this.ctx.fillRect(x + 2, y + 2, 30, 30);
-      this.ctx.globalAlpha = 1;
-      
-      // Building structure
-      this.ctx.fillStyle = this.getBuildingColor(tile.buildingType || 'default');
-      this.ctx.fillRect(x, y, 32, 32);
-      
-      // Building highlights
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-      this.ctx.fillRect(x, y, 32, 4);
-      this.ctx.fillRect(x, y, 4, 32);
-      
-      // Building windows/details
-      if (tile.buildingType !== 'ruins') {
-        this.ctx.fillStyle = '#ffeb3b';
-        this.ctx.fillRect(x + 8, y + 8, 4, 4);
-        this.ctx.fillRect(x + 20, y + 8, 4, 4);
-        this.ctx.fillRect(x + 8, y + 20, 4, 4);
-        this.ctx.fillRect(x + 20, y + 20, 4, 4);
-      }
-      
-      // Entrance indicator
-      if (tile.isEntrance) {
-        this.ctx.fillStyle = '#4CAF50';
-        this.ctx.fillRect(x + 14, y + 28, 4, 4);
-      }
-      
-      this.ctx.restore();
-    }
-  }
-
-  private getBuildingColor(buildingType: string): string {
-    switch (buildingType) {
-      case 'settlement': return '#8D6E63';
-      case 'trader_post': return '#4CAF50';
-      case 'clinic': return '#F44336';
-      case 'workshop': return '#607D8B';
-      case 'tavern': return '#9C27B0';
-      case 'security': return '#2196F3';
-      case 'vault': return '#00BCD4';
-      case 'luxury_tower': return '#FF9800';
-      case 'ruins': return '#424242';
-      default: return '#795548';
-    }
-  }
-
-  private renderEnhancedTile(tile: Tile, x: number, y: number) {
-    // Base tile color with enhanced graphics
-    let baseColor = this.getTileColor(tile.type);
-
-    // For interior tiles, always make them visible
-    if (this.gameState.currentMap.isInterior) {
-      tile.visible = true;
-      tile.discovered = true;
-    } else if (!tile.visible && tile.discovered) {
-      baseColor = this.darkenColor(baseColor, 0.5);
-    }
-    
-    // Add texture pattern
-    if (!this.settings.lowGraphicsMode && !this.gameState.currentMap.isInterior) {
-      this.renderTileTexture(tile.type, x, y, baseColor);
-    } else {
-      this.ctx.fillStyle = baseColor;
-      this.ctx.fillRect(x, y, 32, 32);
-      
-      // For interior maps, add floor tiles
-      if (this.gameState.currentMap.isInterior) {
-        this.renderInteriorTile(tile, x, y);
-      }
-    }
-    
-    // Add environmental details
-    if (tile.visible && !this.settings.lowGraphicsMode && !this.gameState.currentMap.isInterior) {
-      this.renderTileDetails(tile, x, y);
-    }
-  }
-  
-  private renderInteriorTile(tile: Tile, x: number, y: number) {
-    // Special rendering for interior tiles
-    const ctx = this.ctx;
-    
-    // Floor
-    if (tile.type === 'stone') {
-      ctx.fillStyle = '#8D6E63'; // Brown wooden floor
-      ctx.fillRect(x, y, 32, 32);
-      
-      // Add wood grain texture
-      ctx.strokeStyle = '#795548';
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i < 4; i++) {
-        ctx.beginPath();
-        ctx.moveTo(x, y + i * 8);
-        ctx.lineTo(x + 32, y + i * 8);
-        ctx.stroke();
-      }
-    }
-    
-    // Walls
-    if (tile.type === 'building' || tile.type === 'furniture') {
-      ctx.fillStyle = '#5D4037'; // Dark brown wall
-      ctx.fillRect(x, y, 32, 32);
-      
-      // Add wall texture
-      ctx.fillStyle = '#4E342E';
-      ctx.fillRect(x + 2, y + 2, 28, 28);
-      
-      // Add 3D effect
-      ctx.fillStyle = '#3E2723';
-      ctx.fillRect(x + 28, y, 4, 32); // Right shadow
-      ctx.fillRect(x, y + 28, 32, 4); // Bottom shadow
-    }
-    
-    // Entrance/Exit
-    if (tile.isEntrance || tile.isExit) {
-      ctx.fillStyle = '#FFD54F'; // Gold for entrances/exits
-      ctx.fillRect(x + 8, y + 8, 16, 16);
-      
-      // Door frame
-      ctx.strokeStyle = '#FF9800';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x + 6, y + 6, 20, 20);
-    }
-  }
-
-  private renderTileTexture(type: string, x: number, y: number, baseColor: string) {
-    this.ctx.fillStyle = baseColor;
-    this.ctx.fillRect(x, y, 32, 32);
-    
-    // Add texture based on tile type
-    switch (type) {
-      case 'grass':
-        // Add grass blades
-        this.ctx.fillStyle = 'rgba(0, 100, 0, 0.3)';
-        for (let i = 0; i < 5; i++) {
-          const grassX = x + Math.random() * 32;
-          const grassY = y + Math.random() * 32;
-          this.ctx.fillRect(grassX, grassY, 1, 3);
-        }
-        break;
-      case 'stone':
-        // Add stone texture
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        this.ctx.fillRect(x + 4, y + 4, 24, 24);
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-        this.ctx.fillRect(x, y, 32, 2);
-        break;
-      case 'water':
-        // Add water ripples
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        this.ctx.lineWidth = 1;
-        this.ctx.beginPath();
-        this.ctx.arc(x + 16, y + 16, 8, 0, Math.PI * 2);
-        this.ctx.stroke();
-        break;
-    }
-  }
-
-  private renderTileDetails(tile: Tile, x: number, y: number) {
-    // Add environmental details based on tile type
-    switch (tile.type) {
-      case 'grass':
-        // Occasionally add flowers
-        if (Math.random() < 0.1) {
-          this.ctx.fillStyle = '#FF69B4';
-          this.ctx.fillRect(x + Math.random() * 28 + 2, y + Math.random() * 28 + 2, 2, 2);
-        }
-        break;
-      case 'dirt':
-        // Add small rocks
-        if (Math.random() < 0.15) {
-          this.ctx.fillStyle = '#8B4513';
-          this.ctx.fillRect(x + Math.random() * 30 + 1, y + Math.random() * 30 + 1, 2, 2);
-        }
-        break;
-    }
-  }
-
-  private getTileColor(type: string): string {
-    switch (type) {
-      case 'grass': return '#4CAF50';
-      case 'dirt': return '#A1887F';
-      case 'stone': return '#9E9E9E';
-      case 'water': return '#2196F3';
-      case 'lava': return '#FF5722';
-      case 'ice': return '#E3F2FD';
-      case 'sand': return '#FFEB3B';
-      case 'ruins': return '#616161';
-      case 'building': return '#6D4C41';
-      default: return '#9E9E9E';
-    }
-  }
-
-  private renderPlayer() {
-    const screenX = this.gameState.player.position.x - this.gameState.camera.x;
-    const screenY = this.gameState.player.position.y - this.gameState.camera.y;
-
-    // Use sprite if available
-    const sprite = this.characterSprites['player'];
-    if (sprite) {
-      this.ctx.drawImage(sprite, screenX - 12, screenY - 12);
-    } else {
-      // Fallback rendering
-      this.ctx.fillStyle = '#4a90e2';
-      this.ctx.fillRect(screenX - 12, screenY - 12, 24, 24);
-    }
-    
-    // Direction indicator
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.beginPath();
-    switch (this.gameState.player.direction) {
-      case 'up':
-        this.ctx.moveTo(screenX, screenY - 15);
-        this.ctx.lineTo(screenX - 4, screenY - 8);
-        this.ctx.lineTo(screenX + 4, screenY - 8);
-        break;
-      case 'down':
-        this.ctx.moveTo(screenX, screenY + 15);
-        this.ctx.lineTo(screenX - 4, screenY + 8);
-        this.ctx.lineTo(screenX + 4, screenY + 8);
-        break;
-      case 'left':
-        this.ctx.moveTo(screenX - 15, screenY);
-        this.ctx.lineTo(screenX - 8, screenY - 4);
-        this.ctx.lineTo(screenX - 8, screenY + 4);
-        break;
-      case 'right':
-        this.ctx.moveTo(screenX + 15, screenY);
-        this.ctx.lineTo(screenX + 8, screenY - 4);
-        this.ctx.lineTo(screenX + 8, screenY + 4);
-        break;
-    }
-    this.ctx.closePath();
-    this.ctx.fill();
-
-    // Player name
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 12px Arial';
-    this.ctx.textAlign = 'center';
-    this.ctx.strokeStyle = '#000000';
-    this.ctx.lineWidth = 3;
-    this.ctx.strokeText(this.gameState.player.name, screenX, screenY - 25);
-    this.ctx.fillText(this.gameState.player.name, screenX, screenY - 25);
-  }
-
-  private renderNPCs() {
-    this.gameState.currentMap.npcs.forEach(npc => {
-      const screenX = npc.position.x - this.gameState.camera.x;
-      const screenY = npc.position.y - this.gameState.camera.y;
-
-      if (screenX < -32 || screenX > this.canvas.width + 32 || 
-          screenY < -32 || screenY > this.canvas.height + 32) return;
-
-      const tileX = Math.floor(npc.position.x / 32);
-      const tileY = Math.floor(npc.position.y / 32);
-      if (!this.gameState.currentMap.isInterior && !this.gameState.currentMap.tiles[tileY]?.[tileX]?.discovered) return;
-
-      // Use sprite if available
-      const sprite = this.characterSprites['npc'];
-      if (sprite) {
-        this.ctx.drawImage(sprite, screenX - 12, screenY - 12);
-      } else {
-        this.ctx.fillStyle = npc.isHostile ? '#ff4444' : '#44ff44';
-        this.ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
-      }
-
-      // NPC name
-      this.ctx.fillStyle = '#ffffff';
-      this.ctx.font = '10px Arial';
-      this.ctx.textAlign = 'center';
-      this.ctx.strokeStyle = '#000000';
-      this.ctx.lineWidth = 2;
-      this.ctx.strokeText(npc.name, screenX, screenY - 20);
-      this.ctx.fillText(npc.name, screenX, screenY - 20);
-    });
-  }
-
-  private renderEnemies() {
-    this.gameState.currentMap.enemies.forEach(enemy => {
-      const screenX = enemy.position.x - this.gameState.camera.x;
-      const screenY = enemy.position.y - this.gameState.camera.y;
-
-      if (screenX < -32 || screenX > this.canvas.width + 32 || 
-          screenY < -32 || screenY > this.canvas.height + 32) return;
-
-      const tileX = Math.floor(enemy.position.x / 32);
-      const tileY = Math.floor(enemy.position.y / 32);
-      if (!this.gameState.currentMap.isInterior && !this.gameState.currentMap.tiles[tileY]?.[tileX]?.discovered) return;
-
-      // Use sprite if available
-      const sprite = this.characterSprites['enemy'];
-      if (sprite) {
-        this.ctx.drawImage(sprite, screenX - 12, screenY - 12);
-      } else {
-        this.ctx.fillStyle = '#ff0000';
-        this.ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
-      }
-
-      // Health bar
-      const healthPercent = enemy.health / enemy.maxHealth;
-      this.ctx.fillStyle = '#333333';
-      this.ctx.fillRect(screenX - 15, screenY - 25, 30, 4);
-      this.ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
-      this.ctx.fillRect(screenX - 15, screenY - 25, 30 * healthPercent, 4);
-
-      // Enemy name
-      this.ctx.fillStyle = '#ffffff';
-      this.ctx.font = '10px Arial';
-      this.ctx.textAlign = 'center';
-      this.ctx.strokeStyle = '#000000';
-      this.ctx.lineWidth = 2;
-      this.ctx.strokeText(enemy.name, screenX, screenY + 25);
-      this.ctx.fillText(enemy.name, screenX, screenY + 25);
-    });
-  }
-
-  private renderLootables() {
-    this.gameState.currentMap.lootables.forEach(lootable => {
-      if (lootable.looted) return;
-
-      const screenX = lootable.position.x - this.gameState.camera.x;
-      const screenY = lootable.position.y - this.gameState.camera.y;
-
-      if (screenX < -32 || screenX > this.canvas.width + 32 || 
-          screenY < -32 || screenY > this.canvas.height + 32) return;
-
-      const tileX = Math.floor(lootable.position.x / 32);
-      const tileY = Math.floor(lootable.position.y / 32);
-      if (!this.gameState.currentMap.isInterior && !this.gameState.currentMap.tiles[tileY]?.[tileX]?.discovered) return;
-
-      // Animated loot indicator
-      const time = Date.now() / 1000;
-      const bounce = Math.sin(time * 3) * 2;
-      
-      this.ctx.fillStyle = '#ffaa00';
-      this.ctx.fillRect(screenX - 8, screenY - 8 + bounce, 16, 16);
-      
-      this.ctx.fillStyle = '#ffffff';
-      this.ctx.font = 'bold 12px Arial';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText('?', screenX, screenY + 4 + bounce);
-      
-      // Glow effect
-      this.ctx.shadowColor = '#ffaa00';
-      this.ctx.shadowBlur = 10;
-      this.ctx.strokeStyle = '#ffaa00';
-      this.ctx.lineWidth = 2;
-      this.ctx.strokeRect(screenX - 8, screenY - 8 + bounce, 16, 16);
-      this.ctx.shadowBlur = 0;
-    });
-  }
-
-  private renderParticles() {
-    this.particleSystem.forEach(particle => {
-      const screenX = particle.position.x - this.gameState.camera.x;
-      const screenY = particle.position.y - this.gameState.camera.y;
-      
-      this.ctx.globalAlpha = particle.life / particle.maxLife;
-      this.ctx.fillStyle = particle.color;
-      this.ctx.fillRect(screenX, screenY, particle.size, particle.size);
-      this.ctx.globalAlpha = 1;
-    });
-  }
-
-  private renderLighting() {
-    if (this.gameState.currentMap.isInterior) {
-      // Apply lighting overlay for interiors
-      this.ctx.globalCompositeOperation = 'multiply';
-      this.ctx.fillStyle = 'rgba(100, 100, 150, 0.3)';
-      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-      
-      // Add light sources
-      this.lightingSystem.forEach(light => {
-        const screenX = light.position.x - this.gameState.camera.x;
-        const screenY = light.position.y - this.gameState.camera.y;
-        
-        const gradient = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, light.radius);
-        gradient.addColorStop(0, `rgba(255, 255, 255, ${light.intensity})`);
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        
-        this.ctx.fillStyle = gradient;
-        this.ctx.fillRect(screenX - light.radius, screenY - light.radius, light.radius * 2, light.radius * 2);
       });
       
-      this.ctx.globalCompositeOperation = 'source-over';
-    }
-  }
-
-  private renderUI() {
-    // Enhanced UI with better graphics
-    const uiPadding = 20;
-    const barHeight = 25;
-    const barWidth = 250;
-    
-    // Health bar
-    this.renderStatusBar(
-      uiPadding, uiPadding,
-      barWidth, barHeight,
-      this.gameState.player.health / this.gameState.player.maxHealth,
-      '#ff0000', '#660000',
-      `Health: ${this.gameState.player.health}/${this.gameState.player.maxHealth}`
-    );
-
-    // Energy bar
-    this.renderStatusBar(
-      uiPadding, uiPadding + barHeight + 10,
-      barWidth, barHeight,
-      this.gameState.player.energy / this.gameState.player.maxEnergy,
-      '#0088ff', '#004488',
-      `Energy: ${Math.floor(this.gameState.player.energy)}/${this.gameState.player.maxEnergy}`
-    );
-
-    // Experience bar
-    this.renderStatusBar(
-      uiPadding, uiPadding + (barHeight + 10) * 2,
-      barWidth, barHeight,
-      this.gameState.player.experience / this.gameState.player.experienceToNext,
-      '#ffaa00', '#cc8800',
-      `Level ${this.gameState.player.level} - XP: ${this.gameState.player.experience}/${this.gameState.player.experienceToNext}`
-    );
-
-    // Location and time info
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    this.ctx.fillRect(uiPadding, this.canvas.height - 80, 300, 60);
-    
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 14px Arial';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(`Location: ${this.gameState.currentMap.name}`, uiPadding + 10, this.canvas.height - 55);
-    
-    const timeOfDay = this.gameState.dayNightCycle < 0.25 || this.gameState.dayNightCycle > 0.75 ? 'Night' : 
-                     this.gameState.dayNightCycle < 0.5 ? 'Day' : 'Evening';
-    this.ctx.fillText(`Time: ${timeOfDay}`, uiPadding + 10, this.canvas.height - 35);
-    this.ctx.fillText(`Weather: ${this.gameState.weather}`, uiPadding + 10, this.canvas.height - 15);
-    
-    // Show exit hint for interiors
-    if (this.gameState.currentMap.isInterior && this.gameState.previousMap) {
-      this.ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
-      this.ctx.font = 'bold 16px Arial';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText('Press ESC to exit building', this.canvas.width / 2, 50);
-    }
-
-    // Mini-map
-    this.renderMiniMap();
-  }
-
-  private renderStatusBar(x: number, y: number, width: number, height: number, 
-                         percentage: number, fillColor: string, bgColor: string, text: string) {
-    // Background
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    this.ctx.fillRect(x - 5, y - 5, width + 10, height + 10);
-    
-    // Bar background
-    this.ctx.fillStyle = bgColor;
-    this.ctx.fillRect(x, y, width, height);
-    
-    // Bar fill with gradient
-    const gradient = this.ctx.createLinearGradient(x, y, x + width, y);
-    gradient.addColorStop(0, fillColor);
-    gradient.addColorStop(1, this.lightenColor(fillColor, 0.3));
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(x, y, width * Math.max(0, percentage), height);
-    
-    // Border
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(x, y, width, height);
-    
-    // Text
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 12px Arial';
-    this.ctx.textAlign = 'center';
-    this.ctx.strokeStyle = '#000000';
-    this.ctx.lineWidth = 3;
-    this.ctx.strokeText(text, x + width / 2, y + height / 2 + 4);
-    this.ctx.fillText(text, x + width / 2, y + height / 2 + 4);
-  }
-
-  private lightenColor(color: string, factor: number): string {
-    // Simple color lightening
-    const hex = color.replace('#', '');
-    const r = Math.min(255, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
-    const g = Math.min(255, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
-    const b = Math.min(255, Math.floor(parseInt(hex.substr(4, 2), 16) * factor));
-    return `rgb(${r}, ${g}, ${b})`;
-  }
-
-  private renderMiniMap() {
-    const miniMapSize = 150;
-    const miniMapX = this.canvas.width - miniMapSize - 20;
-    const miniMapY = 20;
-    
-    // Background
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    this.ctx.fillRect(miniMapX - 5, miniMapY - 5, miniMapSize + 10, miniMapSize + 10);
-    
-    this.ctx.fillStyle = '#000000';
-    this.ctx.fillRect(miniMapX, miniMapY, miniMapSize, miniMapSize);
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(miniMapX, miniMapY, miniMapSize, miniMapSize);
-    
-    const scaleX = miniMapSize / this.gameState.currentMap.width;
-    const scaleY = miniMapSize / this.gameState.currentMap.height;
-    
-    // Render discovered tiles
-    const sampleRate = Math.max(1, Math.floor(this.gameState.currentMap.width / 50));
-    
-    for (let y = 0; y < this.gameState.currentMap.height; y += sampleRate) {
-      for (let x = 0; x < this.gameState.currentMap.width; x += sampleRate) {
-        if (!this.gameState.currentMap.tiles[y] || !this.gameState.currentMap.tiles[y][x]) continue;
-        const tile = this.gameState.currentMap.tiles[y][x];
-        if (!tile.discovered) continue;
-        
-        const pixelX = miniMapX + x * scaleX;
-        const pixelY = miniMapY + y * scaleY;
-        
-        let color = this.getTileColor(tile.type);
-        if (!tile.visible && !this.gameState.currentMap.isInterior) {
-          color = this.darkenColor(color, 0.5);
-        }
-        
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(pixelX, pixelY, Math.max(1, scaleX * sampleRate), Math.max(1, scaleY * sampleRate));
+      // Remove enemy from map
+      const enemyIndex = this.gameState.currentMap.enemies.indexOf(enemy);
+      if (enemyIndex >= 0) {
+        this.gameState.currentMap.enemies.splice(enemyIndex, 1);
       }
     }
     
-    // Player position
-    const playerX = miniMapX + (this.gameState.player.position.x / 32) * scaleX;
-    const playerY = miniMapY + (this.gameState.player.position.y / 32) * scaleY;
-    this.ctx.fillStyle = '#ff0000';
-    this.ctx.fillRect(playerX - 2, playerY - 2, 4, 4);
+    // Check if combat should end
+    const aliveEnemies = this.gameState.combat.participants.filter(p => !('class' in p) && p.health > 0);
+    const aliveAllies = this.gameState.combat.participants.filter(p => 'class' in p && p.health > 0);
     
-    // NPCs
-    this.gameState.currentMap.npcs.forEach(npc => {
-      const npcX = miniMapX + (npc.position.x / 32) * scaleX;
-      const npcY = miniMapY + (npc.position.y / 32) * scaleY;
-      this.ctx.fillStyle = npc.isHostile ? '#ff4444' : '#44ff44';
-      this.ctx.fillRect(npcX - 1, npcY - 1, 2, 2);
-    });
+    if (aliveEnemies.length === 0) {
+      // Victory
+      this.gameState.combat.combatLog.push('Victory!');
+      setTimeout(() => {
+        this.endCombat();
+      }, 2000);
+    } else if (aliveAllies.length === 0) {
+      // Defeat
+      this.gameState.combat.combatLog.push('Defeat!');
+      setTimeout(() => {
+        this.endCombat();
+      }, 2000);
+    }
   }
 
-  private darkenColor(color: string, factor: number): string {
-    const hex = color.replace('#', '');
-    const r = Math.floor(parseInt(hex.substr(0, 2), 16) * factor);
-    const g = Math.floor(parseInt(hex.substr(2, 2), 16) * factor);
-    const b = Math.floor(parseInt(hex.substr(4, 2), 16) * factor);
-    return `rgb(${r}, ${g}, ${b})`;
+  private advanceCombatTurn() {
+    if (!this.gameState.combat) return;
+    
+    const combat = this.gameState.combat;
+    
+    // Move to next turn
+    combat.currentTurn = (combat.currentTurn + 1) % combat.turnOrder.length;
+    
+    // If we've gone through all participants, start a new round
+    if (combat.currentTurn === 0) {
+      combat.round++;
+      
+      // Regenerate some energy for all participants
+      combat.participants.forEach(participant => {
+        participant.energy = Math.min(participant.maxEnergy, participant.energy + 2);
+      });
+    }
+    
+    // Check if current actor is alive
+    const currentActor = combat.turnOrder[combat.currentTurn];
+    if (currentActor.health <= 0) {
+      this.advanceCombatTurn();
+      return;
+    }
+    
+    // Update turn indicator
+    combat.isPlayerTurn = 'class' in currentActor;
+    
+    // If it's an AI turn, perform AI action
+    if (!combat.isPlayerTurn) {
+      setTimeout(() => {
+        this.performAIAction(currentActor as Enemy);
+      }, 1000);
+    }
+    
+    this.notifyStateChange();
   }
-  
+
+  private performAIAction(enemy: Enemy) {
+    if (!this.gameState.combat) return;
+    
+    // Simple AI: attack the player
+    const playerIndex = this.gameState.combat.participants.findIndex(p => 'class' in p);
+    if (playerIndex >= 0) {
+      this.performAttack(enemy, this.gameState.combat.participants[playerIndex]);
+      setTimeout(() => {
+        this.advanceCombatTurn();
+      }, 1000);
+    }
+  }
+
+  private endCombat() {
+    this.gameState.combat = undefined;
+    this.gameState.gameMode = 'exploration';
+    this.notifyStateChange();
+  }
+
+  private getTimeOfDay(): 'dawn' | 'day' | 'dusk' | 'night' {
+    const cycle = this.gameState.dayNightCycle;
+    if (cycle < 0.25) return 'night';
+    if (cycle < 0.5) return 'dawn';
+    if (cycle < 0.75) return 'day';
+    return 'dusk';
+  }
+
+  private handleInteraction() {
+    const player = this.gameState.player;
+    
+    // Check for nearby NPCs
+    const nearbyNPC = this.gameState.currentMap.npcs.find(npc => {
+      const distance = Math.sqrt(
+        Math.pow(npc.position.x - player.position.x, 2) + 
+        Math.pow(npc.position.y - player.position.y, 2)
+      );
+      return distance < 64; // Interaction range
+    });
+    
+    if (nearbyNPC) {
+      this.startDialogue(nearbyNPC);
+      return;
+    }
+    
+    // Check for nearby lootables
+    const nearbyLootable = this.gameState.currentMap.lootables.find(lootable => {
+      const distance = Math.sqrt(
+        Math.pow(lootable.position.x - player.position.x, 2) + 
+        Math.pow(lootable.position.y - player.position.y, 2)
+      );
+      return distance < 64 && !lootable.looted;
+    });
+    
+    if (nearbyLootable) {
+      this.openLootable(nearbyLootable);
+      return;
+    }
+    
+    // Check for building entrances
+    const playerTileX = Math.floor(player.position.x / 32);
+    const playerTileY = Math.floor(player.position.y / 32);
+    const currentTile = this.gameState.currentMap.tiles[playerTileY]?.[playerTileX];
+    
+    if (currentTile?.isEntrance && currentTile.buildingId) {
+      this.enterBuilding(currentTile.buildingId);
+    }
+  }
+
+  private startDialogue(npc: NPC) {
+    if (npc.dialogue.length === 0) return;
+    
+    const firstNode = npc.dialogue[0];
+    this.gameState.dialogue = {
+      npcId: npc.id,
+      currentNode: firstNode.id,
+      history: [`${npc.name}: ${firstNode.text}`],
+      choices: firstNode.choices
+    };
+    
+    this.gameState.gameMode = 'dialogue';
+    this.notifyStateChange();
+  }
+
+  private openLootable(lootable: LootableItem) {
+    lootable.discovered = true;
+    if (this.lootableCallback) {
+      this.lootableCallback(lootable);
+    }
+  }
+
   private enterBuilding(buildingId: string) {
     const building = getBuildingById(buildingId);
     if (!building) return;
     
-    // Store current map and position for return
+    // Store current map state
     this.gameState.previousMap = {
       map: this.gameState.currentMap,
       position: { ...this.gameState.player.position }
@@ -1649,35 +752,12 @@ export class GameEngine {
     this.gameState.currentMap = building.interiorMap;
     this.gameState.player.position = { ...building.exitPosition };
     
-    // Clear caches for new map
-    this.visibleTileCache = {};
-    this.lastCameraPosition = { x: -1, y: -1 };
+    // Initialize visibility for interior
+    this.initializeVisibilityMap();
     
-    // Initialize visibility map for interior
-    const mapHeight = this.gameState.currentMap.tiles.length;
-    const mapWidth = this.gameState.currentMap.tiles[0]?.length || 0;
-    
-    this.gameState.visibilityMap = Array(mapHeight)
-      .fill(null)
-      .map(() => Array(mapWidth).fill(false));
-    
-    // Force discovery and visibility of all interior tiles since it's a small enclosed space
-    for (let y = 0; y < mapHeight; y++) {
-      for (let x = 0; x < mapWidth; x++) {
-        if (this.gameState.currentMap.tiles[y] && this.gameState.currentMap.tiles[y][x]) {
-          this.gameState.currentMap.tiles[y][x].discovered = true;
-          this.gameState.currentMap.tiles[y][x].visible = true;
-          this.gameState.visibilityMap[y][x] = true;
-        }
-      }
-    }
-    
-    this.updateCamera();
-    this.updateVisibility();
-    this.cacheInvalidated = true;
     this.notifyStateChange();
   }
-  
+
   private exitBuilding() {
     if (!this.gameState.previousMap) return;
     
@@ -1686,22 +766,258 @@ export class GameEngine {
     this.gameState.player.position = { ...this.gameState.previousMap.position };
     this.gameState.previousMap = undefined;
     
-    // Clear caches for map change
-    this.visibleTileCache = {};
-    this.lastCameraPosition = { x: -1, y: -1 };
-    this.cacheInvalidated = true;
+    // Initialize visibility for exterior
+    this.initializeVisibilityMap();
     
-    this.updateCamera();
-    this.updateVisibility();
     this.notifyStateChange();
   }
 
-  public setStateChangeCallback(callback: (newState: GameState) => void) {
+  private render() {
+    // Clear canvas
+    this.ctx.fillStyle = '#000000';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Render map
+    this.renderMap();
+    
+    // Render entities
+    this.renderEntities();
+    
+    // Render UI elements
+    this.renderUI();
+  }
+
+  private renderMap() {
+    const map = this.gameState.currentMap;
+    const camera = this.gameState.camera;
+    
+    // Calculate visible tile range
+    const startX = Math.floor(camera.x / 32);
+    const startY = Math.floor(camera.y / 32);
+    const endX = Math.min(map.width, startX + Math.ceil(this.canvas.width / 32) + 1);
+    const endY = Math.min(map.height, startY + Math.ceil(this.canvas.height / 32) + 1);
+    
+    for (let y = Math.max(0, startY); y < endY; y++) {
+      for (let x = Math.max(0, startX); x < endX; x++) {
+        const tile = map.tiles[y][x];
+        if (!tile.discovered) continue;
+        
+        const screenX = x * 32 - camera.x;
+        const screenY = y * 32 - camera.y;
+        
+        // Apply visibility
+        const isVisible = this.gameState.visibilityMap[y] && this.gameState.visibilityMap[y][x];
+        this.ctx.globalAlpha = isVisible ? 1.0 : 0.5;
+        
+        // Render tile
+        this.ctx.fillStyle = this.getTileColor(tile.type);
+        this.ctx.fillRect(screenX, screenY, 32, 32);
+        
+        // Render tile borders for buildings
+        if (tile.type === 'building') {
+          this.ctx.strokeStyle = '#666666';
+          this.ctx.lineWidth = 1;
+          this.ctx.strokeRect(screenX, screenY, 32, 32);
+        }
+      }
+    }
+    
+    this.ctx.globalAlpha = 1.0;
+  }
+
+  private getTileColor(type: string): string {
+    switch (type) {
+      case 'grass': return '#4a7c59';
+      case 'dirt': return '#8b4513';
+      case 'stone': return '#696969';
+      case 'water': return '#4682b4';
+      case 'ruins': return '#2f2f2f';
+      case 'building': return '#654321';
+      case 'sand': return '#f4a460';
+      default: return '#333333';
+    }
+  }
+
+  private renderEntities() {
+    const camera = this.gameState.camera;
+    
+    // Render NPCs
+    this.gameState.currentMap.npcs.forEach(npc => {
+      const screenX = npc.position.x - camera.x;
+      const screenY = npc.position.y - camera.y;
+      
+      // Check if NPC is visible
+      const tileX = Math.floor(npc.position.x / 32);
+      const tileY = Math.floor(npc.position.y / 32);
+      const isVisible = this.gameState.visibilityMap[tileY] && this.gameState.visibilityMap[tileY][tileX];
+      
+      if (isVisible && screenX > -32 && screenX < this.canvas.width && screenY > -32 && screenY < this.canvas.height) {
+        this.ctx.fillStyle = '#00ff00';
+        this.ctx.fillRect(screenX - 16, screenY - 16, 32, 32);
+        
+        // Render name
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(npc.name, screenX, screenY - 20);
+      }
+    });
+    
+    // Render enemies
+    this.gameState.currentMap.enemies.forEach(enemy => {
+      const screenX = enemy.position.x - camera.x;
+      const screenY = enemy.position.y - camera.y;
+      
+      // Check if enemy is visible
+      const tileX = Math.floor(enemy.position.x / 32);
+      const tileY = Math.floor(enemy.position.y / 32);
+      const isVisible = this.gameState.visibilityMap[tileY] && this.gameState.visibilityMap[tileY][tileX];
+      
+      if (isVisible && screenX > -32 && screenX < this.canvas.width && screenY > -32 && screenY < this.canvas.height) {
+        this.ctx.fillStyle = '#ff0000';
+        this.ctx.fillRect(screenX - 16, screenY - 16, 32, 32);
+        
+        // Render health bar
+        const healthPercent = enemy.health / enemy.maxHealth;
+        this.ctx.fillStyle = '#ff0000';
+        this.ctx.fillRect(screenX - 16, screenY - 25, 32, 4);
+        this.ctx.fillStyle = '#00ff00';
+        this.ctx.fillRect(screenX - 16, screenY - 25, 32 * healthPercent, 4);
+      }
+    });
+    
+    // Render lootables
+    this.gameState.currentMap.lootables.forEach(lootable => {
+      if (lootable.looted) return;
+      
+      const screenX = lootable.position.x - camera.x;
+      const screenY = lootable.position.y - camera.y;
+      
+      // Check if lootable is visible
+      const tileX = Math.floor(lootable.position.x / 32);
+      const tileY = Math.floor(lootable.position.y / 32);
+      const isVisible = this.gameState.visibilityMap[tileY] && this.gameState.visibilityMap[tileY][tileX];
+      
+      if (isVisible && screenX > -32 && screenX < this.canvas.width && screenY > -32 && screenY < this.canvas.height) {
+        this.ctx.fillStyle = '#ffff00';
+        this.ctx.fillRect(screenX - 8, screenY - 8, 16, 16);
+      }
+    });
+    
+    // Render player
+    const player = this.gameState.player;
+    const screenX = player.position.x - camera.x;
+    const screenY = player.position.y - camera.y;
+    
+    this.ctx.fillStyle = '#0066ff';
+    this.ctx.fillRect(screenX - 16, screenY - 16, 32, 32);
+    
+    // Render player direction indicator
+    this.ctx.fillStyle = '#ffffff';
+    switch (player.direction) {
+      case 'up':
+        this.ctx.fillRect(screenX - 4, screenY - 16, 8, 8);
+        break;
+      case 'down':
+        this.ctx.fillRect(screenX - 4, screenY + 8, 8, 8);
+        break;
+      case 'left':
+        this.ctx.fillRect(screenX - 16, screenY - 4, 8, 8);
+        break;
+      case 'right':
+        this.ctx.fillRect(screenX + 8, screenY - 4, 8, 8);
+        break;
+    }
+  }
+
+  private renderUI() {
+    // Render minimap
+    this.renderMinimap();
+    
+    // Render day/night indicator
+    this.renderDayNightIndicator();
+  }
+
+  private renderMinimap() {
+    const minimapSize = 150;
+    const minimapX = this.canvas.width - minimapSize - 10;
+    const minimapY = 10;
+    
+    // Minimap background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.fillRect(minimapX, minimapY, minimapSize, minimapSize);
+    
+    // Minimap border
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(minimapX, minimapY, minimapSize, minimapSize);
+    
+    const map = this.gameState.currentMap;
+    const scaleX = minimapSize / map.width;
+    const scaleY = minimapSize / map.height;
+    
+    // Render discovered tiles
+    for (let y = 0; y < map.height; y++) {
+      for (let x = 0; x < map.width; x++) {
+        const tile = map.tiles[y][x];
+        if (tile.discovered) {
+          const pixelX = minimapX + x * scaleX;
+          const pixelY = minimapY + y * scaleY;
+          
+          this.ctx.fillStyle = this.getTileColor(tile.type);
+          this.ctx.fillRect(pixelX, pixelY, Math.max(1, scaleX), Math.max(1, scaleY));
+        }
+      }
+    }
+    
+    // Render player position
+    const playerTileX = Math.floor(this.gameState.player.position.x / 32);
+    const playerTileY = Math.floor(this.gameState.player.position.y / 32);
+    const playerPixelX = minimapX + playerTileX * scaleX;
+    const playerPixelY = minimapY + playerTileY * scaleY;
+    
+    this.ctx.fillStyle = '#ff0000';
+    this.ctx.fillRect(playerPixelX - 1, playerPixelY - 1, 3, 3);
+  }
+
+  private renderDayNightIndicator() {
+    const cycle = this.gameState.dayNightCycle;
+    const timeOfDay = this.getTimeOfDay();
+    
+    // Time indicator
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.fillRect(10, 10, 120, 30);
+    
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = '14px Arial';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(`Time: ${timeOfDay}`, 15, 30);
+    
+    // Day/night cycle bar
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(15, 35, 100, 5);
+    
+    this.ctx.fillStyle = cycle < 0.5 ? '#ffff00' : '#000080';
+    this.ctx.fillRect(15, 35, 100 * cycle, 5);
+  }
+
+  // Public methods for external access
+  public setStateChangeCallback(callback: (state: GameState) => void) {
     this.stateChangeCallback = callback;
   }
 
-  public setLootableCallback(callback: (lootable: any) => void) {
+  public setLootableCallback(callback: (lootable: LootableItem) => void) {
     this.lootableCallback = callback;
+  }
+
+  public getGameState(): GameState {
+    return this.gameState;
+  }
+
+  public setGameState(newState: GameState) {
+    this.gameState = { ...newState };
+    this.initializeVisibilityMap();
   }
 
   private notifyStateChange() {
@@ -1710,38 +1026,13 @@ export class GameEngine {
     }
   }
 
-  public setGameState(newState: GameState) {
-    this.gameState = { ...newState };
-  }
-
-  public getGameState(): GameState {
-    return { ...this.gameState };
-  }
-
-  public handleCombatAction(action: string, targetIndex?: number) {
-    console.log('Combat action:', action, targetIndex);
-  }
-
   public destroy() {
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
     }
+    
+    // Remove event listeners
+    window.removeEventListener('keydown', this.handleKeyPress);
+    window.removeEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
   }
-}
-
-// Particle system interfaces
-interface Particle {
-  position: Position;
-  velocity: Position;
-  life: number;
-  maxLife: number;
-  size: number;
-  color: string;
-}
-
-interface LightSource {
-  position: Position;
-  radius: number;
-  intensity: number;
-  color: string;
 }

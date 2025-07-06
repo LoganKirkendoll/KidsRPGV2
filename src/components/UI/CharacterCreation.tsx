@@ -85,6 +85,7 @@ const CharacterCreation: React.FC<CharacterCreationProps> = ({ onCreateCharacter
     if (currentIndex < steps.length - 1) {
       setStep(steps[currentIndex + 1] as any);
     } else {
+      // Pass character data and trigger intro
       onCreateCharacter(characterData);
     }
   };
