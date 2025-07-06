@@ -1,6 +1,7 @@
 import { GameState, Position, Character, Enemy, NPC, Tile, GameMap } from '../types/game';
 import { maps } from '../data/maps';
 import { getBuildingByPosition, getBuildingById } from '../data/buildings';
+import BuildingRenderer from '../components/BuildingRenderer';
 
 export class GameEngine {
   private canvas: HTMLCanvasElement;
@@ -1037,13 +1038,19 @@ export class GameEngine {
         if (screenX < -32 || screenX > this.canvas.width || 
             screenY < -32 || screenY > this.canvas.height) continue;
 
-        // Use sprite if available, otherwise fallback to color
-        const sprite = this.tileSprites[tile.type];
-        if (sprite) {
-          this.ctx.drawImage(sprite, screenX, screenY);
+        // Render terrain tile
+        if (tile.type !== 'building') {
+          // Use sprite if available, otherwise fallback to color
+          const sprite = this.tileSprites[tile.type];
+          if (sprite) {
+            this.ctx.drawImage(sprite, screenX, screenY);
+          } else {
+            this.ctx.fillStyle = this.getTileColor(tile.type);
+            this.ctx.fillRect(screenX, screenY, 32, 32);
+          }
         } else {
-          this.ctx.fillStyle = this.getTileColor(tile.type);
-          this.ctx.fillRect(screenX, screenY, 32, 32);
+          // Render building with enhanced graphics
+          this.renderBuilding(tile, screenX, screenY);
         }
 
         // Apply darkness for non-visible exterior tiles
@@ -1062,6 +1069,65 @@ export class GameEngine {
           this.ctx.fillText('E', screenX + 16, screenY + 20);
         }
       }
+    }
+  }
+
+  private renderBuilding(tile: Tile, x: number, y: number) {
+    // Building base
+    this.ctx.fillStyle = this.getBuildingColor(tile.buildingType || 'default');
+    this.ctx.fillRect(x, y, 32, 32);
+    
+    // Building details
+    if (!this.settings.lowGraphicsMode) {
+      // Add building texture and details
+      this.ctx.save();
+      
+      // Building shadow
+      this.ctx.globalAlpha = 0.3;
+      this.ctx.fillStyle = '#000000';
+      this.ctx.fillRect(x + 2, y + 2, 30, 30);
+      this.ctx.globalAlpha = 1;
+      
+      // Building structure
+      this.ctx.fillStyle = this.getBuildingColor(tile.buildingType || 'default');
+      this.ctx.fillRect(x, y, 32, 32);
+      
+      // Building highlights
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      this.ctx.fillRect(x, y, 32, 4);
+      this.ctx.fillRect(x, y, 4, 32);
+      
+      // Building windows/details
+      if (tile.buildingType !== 'ruins') {
+        this.ctx.fillStyle = '#ffeb3b';
+        this.ctx.fillRect(x + 8, y + 8, 4, 4);
+        this.ctx.fillRect(x + 20, y + 8, 4, 4);
+        this.ctx.fillRect(x + 8, y + 20, 4, 4);
+        this.ctx.fillRect(x + 20, y + 20, 4, 4);
+      }
+      
+      // Entrance indicator
+      if (tile.isEntrance) {
+        this.ctx.fillStyle = '#4CAF50';
+        this.ctx.fillRect(x + 14, y + 28, 4, 4);
+      }
+      
+      this.ctx.restore();
+    }
+  }
+
+  private getBuildingColor(buildingType: string): string {
+    switch (buildingType) {
+      case 'settlement': return '#8D6E63';
+      case 'trader_post': return '#4CAF50';
+      case 'clinic': return '#F44336';
+      case 'workshop': return '#607D8B';
+      case 'tavern': return '#9C27B0';
+      case 'security': return '#2196F3';
+      case 'vault': return '#00BCD4';
+      case 'luxury_tower': return '#FF9800';
+      case 'ruins': return '#424242';
+      default: return '#795548';
     }
   }
 
