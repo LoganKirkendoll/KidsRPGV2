@@ -826,8 +826,8 @@ export class GameEngine {
       
       this.renderBounds.startX = Math.max(0, Math.floor(this.gameState.camera.x / 32) - 1);
       this.renderBounds.startY = Math.max(0, Math.floor(this.gameState.camera.y / 32) - 1);
-      this.renderBounds.endX = Math.min(this.renderBounds.startX + Math.ceil(this.canvas.width / 32) + 2, actualMapWidth);
-      this.renderBounds.endY = Math.min(this.renderBounds.startY + Math.ceil(this.canvas.height / 32) + 2, actualMapHeight);
+      this.renderBounds.endX = Math.min(this.renderBounds.startX + Math.ceil(this.canvas.width / 32) + 3, actualMapWidth);
+      this.renderBounds.endY = Math.min(this.renderBounds.startY + Math.ceil(this.canvas.height / 32) + 3, actualMapHeight);
       
       this.lastCameraPosition = { ...this.gameState.camera };
       this.cacheInvalidated = true;
@@ -1131,19 +1131,133 @@ export class GameEngine {
     }
   }
 
+  private renderEnhancedTile(tile: Tile, x: number, y: number) {
+    // Base tile color with enhanced graphics
+    let baseColor = this.getTileColor(tile.type);
+    const isInterior = this.gameState.currentMap.isInterior;
+    
+    if (!tile.visible && tile.discovered) {
+      baseColor = this.darkenColor(baseColor, 0.5);
+    }
+    
+    // Add texture pattern
+    if (!this.settings.lowGraphicsMode && !isInterior) {
+      this.renderTileTexture(tile.type, x, y, baseColor);
+    } else {
+      this.ctx.fillStyle = baseColor;
+      this.ctx.fillRect(x, y, 32, 32);
+      
+      // For interior maps, add floor tiles
+      if (isInterior) {
+        this.renderInteriorTile(tile, x, y);
+      }
+    }
+    
+    // Add environmental details
+    if (tile.visible && !this.settings.lowGraphicsMode && !isInterior) {
+      this.renderTileDetails(tile, x, y);
+    }
+  }
+  
+  private renderInteriorTile(tile: Tile, x: number, y: number) {
+    // Render interior floor tiles with a grid pattern
+    this.ctx.fillStyle = '#8D6E63'; // Brown floor color
+    this.ctx.fillRect(x, y, 32, 32);
+    
+    // Add grid lines for floor tiles
+    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x, y, 32, 32);
+    
+    // Add some texture to the floor
+    if (tile.type === 'stone') {
+      // Stone floor pattern
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      if ((Math.floor(x / 32) + Math.floor(y / 32)) % 2 === 0) {
+        this.ctx.fillRect(x + 2, y + 2, 28, 28);
+      }
+    } else if (tile.type === 'building') {
+      // Wall pattern
+      this.ctx.fillStyle = '#5D4037'; // Darker brown for walls
+      this.ctx.fillRect(x, y, 32, 32);
+      
+      // Add some texture to walls
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      this.ctx.fillRect(x + 4, y + 4, 24, 24);
+    }
+    
+    // Add special markings for entrances/exits
+    if (tile.isEntrance || tile.isExit) {
+      this.ctx.fillStyle = 'rgba(255, 215, 0, 0.3)'; // Gold color
+      this.ctx.fillRect(x + 8, y + 8, 16, 16);
+    }
+  }
+
+  private renderTileTexture(type: string, x: number, y: number, baseColor: string) {
+    this.ctx.fillStyle = baseColor;
+    this.ctx.fillRect(x, y, 32, 32);
+    
+    // Add texture based on tile type
+    switch (type) {
+      case 'grass':
+        // Add grass blades
+        this.ctx.fillStyle = 'rgba(0, 100, 0, 0.3)';
+        for (let i = 0; i < 5; i++) {
+          const grassX = x + Math.random() * 32;
+          const grassY = y + Math.random() * 32;
+          this.ctx.fillRect(grassX, grassY, 1, 3);
+        }
+        break;
+      case 'stone':
+        // Add stone texture
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        this.ctx.fillRect(x + 4, y + 4, 24, 24);
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.fillRect(x, y, 32, 2);
+        break;
+      case 'water':
+        // Add water ripples
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.arc(x + 16, y + 16, 8, 0, Math.PI * 2);
+        this.ctx.stroke();
+        break;
+    }
+  }
+
+  private renderTileDetails(tile: Tile, x: number, y: number) {
+    // Add environmental details based on tile type
+    switch (tile.type) {
+      case 'grass':
+        // Occasionally add flowers
+        if (Math.random() < 0.1) {
+          this.ctx.fillStyle = '#FF69B4';
+          this.ctx.fillRect(x + Math.random() * 28 + 2, y + Math.random() * 28 + 2, 2, 2);
+        }
+        break;
+      case 'dirt':
+        // Add small rocks
+        if (Math.random() < 0.15) {
+          this.ctx.fillStyle = '#8B4513';
+          this.ctx.fillRect(x + Math.random() * 30 + 1, y + Math.random() * 30 + 1, 2, 2);
+        }
+        break;
+    }
+  }
+
   private getTileColor(type: string): string {
     switch (type) {
-      case 'grass': return '#4a7c59';
-      case 'dirt': return '#8b4513';
-      case 'stone': return '#696969';
-      case 'water': return '#4682b4';
-      case 'lava': return '#ff4500';
-      case 'ice': return '#b0e0e6';
-      case 'sand': return '#f4a460';
-      case 'ruins': return '#2f2f2f';
-      case 'building': return '#654321';
-      case 'furniture': return '#8B4513';
-      default: return '#333333';
+      case 'grass': return '#4CAF50';
+      case 'dirt': return '#A1887F';
+      case 'stone': return '#9E9E9E';
+      case 'water': return '#2196F3';
+      case 'lava': return '#FF5722';
+      case 'ice': return '#E3F2FD';
+      case 'sand': return '#FFEB3B';
+      case 'ruins': return '#424242';
+      case 'building': return '#5D4037';
+      default: return '#9E9E9E';
     }
   }
 

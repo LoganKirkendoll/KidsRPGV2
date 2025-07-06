@@ -10,6 +10,11 @@ export const useGameState = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [settings, setSettings] = useState<GameSettings>(SaveSystem.loadSettings());
   const [gameMode, setGameMode] = useState<'menu' | 'character-creation' | 'playing'>('menu');
+  
+  // Export setGameMode for use in other components
+  const updateGameMode = useCallback((mode: 'menu' | 'character-creation' | 'playing') => {
+    setGameMode(mode);
+  }, []);
 
   // Auto-save every 30 seconds
   useEffect(() => {
@@ -347,6 +352,7 @@ export const useGameState = () => {
     gameState,
     settings,
     gameMode,
+    setGameMode: updateGameMode,
     createNewGame,
     loadGame,
     saveGame,
