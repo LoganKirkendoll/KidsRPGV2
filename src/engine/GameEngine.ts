@@ -1160,36 +1160,52 @@ export class GameEngine {
   }
   
   private renderInteriorTile(tile: Tile, x: number, y: number) {
-    // Render interior floor tiles with a grid pattern
-    this.ctx.fillStyle = '#8D6E63'; // Brown floor color
-    this.ctx.fillRect(x, y, 32, 32);
+    // Interior-specific rendering
+    let baseColor = '#8B4513'; // Wood floor default
     
-    // Add grid lines for floor tiles
-    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(x, y, 32, 32);
-    
-    // Add some texture to the floor
-    if (tile.type === 'stone') {
-      // Stone floor pattern
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-      if ((Math.floor(x / 32) + Math.floor(y / 32)) % 2 === 0) {
-        this.ctx.fillRect(x + 2, y + 2, 28, 28);
-      }
-    } else if (tile.type === 'building') {
-      // Wall pattern
-      this.ctx.fillStyle = '#5D4037'; // Darker brown for walls
-      this.ctx.fillRect(x, y, 32, 32);
-      
-      // Add some texture to walls
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-      this.ctx.fillRect(x + 4, y + 4, 24, 24);
+    if (tile.type === 'building' || !tile.walkable) {
+      baseColor = '#5D4037'; // Dark wood for walls
+    } else if (tile.type === 'stone') {
+      baseColor = '#9E9E9E'; // Stone floor
+    } else if (tile.type === 'water') {
+      baseColor = '#2196F3'; // Water
     }
     
-    // Add special markings for entrances/exits
-    if (tile.isEntrance || tile.isExit) {
-      this.ctx.fillStyle = 'rgba(255, 215, 0, 0.3)'; // Gold color
-      this.ctx.fillRect(x + 8, y + 8, 16, 16);
+    // Fill with base color
+    this.ctx.fillStyle = baseColor;
+    this.ctx.fillRect(x, y, 32, 32);
+    
+    // Add texture details for interior
+    if (!this.settings.lowGraphicsMode) {
+      this.ctx.save();
+      this.ctx.globalAlpha = 0.3;
+      
+      if (tile.type === 'building' || !tile.walkable) {
+        // Wall texture
+        this.ctx.fillStyle = '#3E2723';
+        for (let i = 0; i < 3; i++) {
+          const lineY = y + (i * 10) + 5;
+          this.ctx.fillRect(x + 2, lineY, 28, 2);
+        }
+      } else {
+        // Floor texture
+        this.ctx.fillStyle = '#5D4037';
+        for (let i = 0; i < 4; i++) {
+          const lineX = x + (i * 8);
+          this.ctx.fillRect(lineX, y, 2, 32);
+        }
+      }
+      
+      // Special markings for entrances/exits
+      if (tile.isEntrance || tile.isExit) {
+        this.ctx.globalAlpha = 0.8;
+        this.ctx.fillStyle = '#FFC107';
+        this.ctx.fillRect(x + 8, y + 8, 16, 16);
+        this.ctx.fillStyle = '#000000';
+        this.ctx.fillText(tile.isEntrance ? "IN" : "OUT", x + 16, y + 20);
+      }
+      
+      this.ctx.restore();
     }
   }
 
@@ -1255,8 +1271,8 @@ export class GameEngine {
       case 'lava': return '#FF5722';
       case 'ice': return '#E3F2FD';
       case 'sand': return '#FFEB3B';
-      case 'ruins': return '#424242';
-      case 'building': return '#5D4037';
+      case 'ruins': return '#616161';
+      case 'building': return '#6D4C41';
       default: return '#9E9E9E';
     }
   }

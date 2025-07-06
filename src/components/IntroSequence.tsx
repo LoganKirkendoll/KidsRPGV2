@@ -72,6 +72,8 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
   const handleSkip = () => {
     if (canSkip) {
       onComplete();
+      // Prevent multiple clicks
+      setCanSkip(false);
     }
   };
 
@@ -150,7 +152,7 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
       {/* Skip button */}
       {canSkip && (
         <button
-          onClick={() => onComplete()}
+          onClick={handleSkip}
           className="fixed bottom-8 right-8 bg-black bg-opacity-70 hover:bg-opacity-90 text-white px-6 py-3 rounded-lg transition-all duration-300 flex items-center gap-2 border border-gray-600 backdrop-blur-sm"
         >
           <SkipForward className="w-5 h-5" />

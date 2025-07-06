@@ -1,6 +1,6 @@
 import React from 'react';
 import { Character } from '../types/game';
-import { Heart, Zap, Shield, Sword, Package, Map, Settings, Save } from 'lucide-react';
+import { Heart, Zap, Shield, Sword, Package, Map, Settings, Save, Radiation } from 'lucide-react';
 
 interface GameHUDProps {
   player: Character;
@@ -45,10 +45,10 @@ const GameHUD: React.FC<GameHUDProps> = ({
   return (
     <>
       {/* Top HUD Bar */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/80 to-transparent p-4">
+      <div className="fixed top-0 left-0 right-0 z-40 bg-gradient-to-b from-black/80 to-transparent p-4 pointer-events-none">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           {/* Player Info */}
-          <div className="flex items-center gap-6 bg-black/60 backdrop-blur-sm rounded-lg p-3 border border-gray-600 shadow">
+          <div className="flex items-center gap-6 bg-black/60 backdrop-blur-sm rounded-lg p-3 border border-gray-600 shadow pointer-events-auto">
             {/* Avatar */}
             <div className="relative">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center border-2 border-blue-400 shadow">
@@ -93,7 +93,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
           </div>
 
           {/* Time and Weather */}
-          <div className="bg-black/60 backdrop-blur-sm rounded-lg p-3 border border-gray-600 shadow">
+          <div className="bg-black/60 backdrop-blur-sm rounded-lg p-3 border border-gray-600 shadow pointer-events-auto">
             <div className="text-center">
               <div className="text-yellow-400 font-bold">{formatTime()}</div>
               <div className="text-gray-300 text-sm capitalize">{weather}</div>
@@ -101,7 +101,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
           </div>
 
           {/* Gold */}
-          <div className="bg-black/60 backdrop-blur-sm rounded-lg p-3 border border-gray-600 shadow">
+          <div className="bg-black/60 backdrop-blur-sm rounded-lg p-3 border border-gray-600 shadow pointer-events-auto">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center">
                 <span className="text-black font-bold text-xs">$</span>
@@ -123,10 +123,10 @@ const GameHUD: React.FC<GameHUDProps> = ({
       </div>
 
       {/* Right Side Action Bar */}
-      <div className="fixed top-20 right-4 z-40 space-y-2">
+      <div className="fixed top-20 right-4 z-40 space-y-2 pointer-events-none">
         <button
           onClick={onOpenInventory} 
-          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg"
+          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg pointer-events-auto"
           title="Inventory (I)" 
         >
           <Package className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -134,7 +134,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         
         <button
           onClick={onOpenEquipment}
-          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg"
+          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg pointer-events-auto"
           title="Equipment (E)"
         >
           <Shield className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -142,7 +142,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         
         <button
           onClick={onOpenCharacter}
-          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg"
+          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg pointer-events-auto"
           title="Character (C)"
         >
           <Sword className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -150,7 +150,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         
         <button
           onClick={onOpenQuests}
-          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg"
+          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg pointer-events-auto"
           title="Quests (Q)"
         >
           <div className="w-5 h-5 bg-yellow-500 rounded group-hover:scale-110 transition-transform" />
@@ -158,7 +158,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         
         <button
           onClick={onOpenMap}
-          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg"
+          className="w-12 h-12 bg-black/60 backdrop-blur-sm hover:bg-black/80 text-white rounded-lg border border-gray-600 transition-all flex items-center justify-center group shadow hover:shadow-lg pointer-events-auto"
           title="Map (M)"
         >
           <Map className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -168,7 +168,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         
         <button
           onClick={onSave}
-          className="w-12 h-12 bg-green-600/60 backdrop-blur-sm hover:bg-green-600/80 text-white rounded-lg border border-green-500 transition-all flex items-center justify-center group shadow hover:shadow-lg"
+          className="w-12 h-12 bg-green-600/60 backdrop-blur-sm hover:bg-green-600/80 text-white rounded-lg border border-green-500 transition-all flex items-center justify-center group shadow hover:shadow-lg pointer-events-auto"
           title="Quick Save"
         >
           <Save className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -176,7 +176,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         
         <button
           onClick={onMenu}
-          className="w-12 h-12 bg-red-600/60 backdrop-blur-sm hover:bg-red-600/80 text-white rounded-lg border border-red-500 transition-all flex items-center justify-center group shadow hover:shadow-lg"
+          className="w-12 h-12 bg-red-600/60 backdrop-blur-sm hover:bg-red-600/80 text-white rounded-lg border border-red-500 transition-all flex items-center justify-center group shadow hover:shadow-lg pointer-events-auto"
           title="Main Menu"
         >
           <Settings className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -185,10 +185,10 @@ const GameHUD: React.FC<GameHUDProps> = ({
 
       {/* Bottom Status Effects */}
       {player.statusEffects.length > 0 && (
-        <div className="fixed bottom-4 left-4 z-40 flex gap-2">
+        <div className="fixed bottom-4 left-4 z-40 flex gap-2 pointer-events-none">
           {player.statusEffects.map((effect, index) => (
             <div key={index} className="relative group">
-              <div className="bg-purple-600/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm border border-purple-400 shadow">
+              <div className="bg-purple-600/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm border border-purple-400 shadow pointer-events-auto">
                 {effect.type} ({Math.ceil(effect.duration)}s)
               </div>
               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black/80 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
@@ -201,9 +201,9 @@ const GameHUD: React.FC<GameHUDProps> = ({
 
       {/* Radiation Warning */}
       {getRadiationPercentage() > 50 && (
-        <div className="fixed bottom-4 left-4 z-40 bg-green-600/80 backdrop-blur-sm text-white px-4 py-2 rounded-lg border border-green-400 animate-pulse shadow">
+        <div className="fixed bottom-4 left-4 z-40 bg-green-600/80 backdrop-blur-sm text-white px-4 py-2 rounded-lg border border-green-400 animate-pulse shadow pointer-events-auto">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-400 rounded-full animate-ping" />
+            <Radiation className="w-5 h-5 text-green-400" />
             <span>Radiation: {Math.floor(getRadiationPercentage())}%</span>
           </div>
         </div>
