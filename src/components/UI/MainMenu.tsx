@@ -331,7 +331,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onSettings, 
         <div className="space-y-4 max-w-md mx-auto">
           <button
             onClick={onNewGame}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg transform hover:scale-105 shadow-lg"
           >
             <Play className="w-6 h-6" />
             New Game
@@ -339,7 +339,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onSettings, 
           
           <button
             onClick={() => setShowLoadMenu(true)}
-            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg"
+            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg transform hover:scale-105 shadow-lg"
           >
             <Save className="w-6 h-6" />
             Load Game
@@ -347,7 +347,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onSettings, 
           
           <button
             onClick={() => setShowSettings(true)}
-            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg"
+            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg transform hover:scale-105 shadow-lg"
           >
             <Settings className="w-6 h-6" />
             Settings
@@ -355,7 +355,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onSettings, 
           
           <button
             onClick={() => setShowAchievements(true)}
-            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg"
+            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg transform hover:scale-105 shadow-lg"
           >
             <Trophy className="w-6 h-6" />
             Achievements
@@ -363,7 +363,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onSettings, 
           
           <button
             onClick={() => setShowCredits(true)}
-            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg"
+            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg transform hover:scale-105 shadow-lg"
           >
             <FileText className="w-6 h-6" />
             Credits

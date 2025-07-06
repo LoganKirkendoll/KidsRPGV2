@@ -335,7 +335,7 @@ export const useGameState = () => {
 
   const returnToMenu = useCallback(() => {
     setGameMode('menu');
-    setGameState(null);
+    updateGameState(null);
   }, []);
 
   const quitGame = useCallback(() => {
