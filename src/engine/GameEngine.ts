@@ -19,6 +19,13 @@ export class GameEngine {
   private isAtEdge = false;
   private edgeDirection: 'north' | 'south' | 'east' | 'west' | null = null;
   
+  // Graphics system
+  private tileSprites: { [key: string]: HTMLCanvasElement } = {};
+  private characterSprites: { [key: string]: HTMLCanvasElement } = {};
+  private uiSprites: { [key: string]: HTMLCanvasElement } = {};
+  private particleSystem: Particle[] = [];
+  private lightingSystem: LightSource[] = [];
+  
   // Performance optimization properties
   private frameCount = 0;
   private lastFpsTime = 0;
@@ -41,8 +48,11 @@ export class GameEngine {
     this.gameState = { ...initialGameState };
     this.settings = settings || { lowGraphicsMode: false };
     
-    this.canvas.width = 800;
-    this.canvas.height = 600;
+    this.canvas.width = 1024;
+    this.canvas.height = 768;
+    
+    // Initialize graphics system
+    this.initializeGraphics();
     
     // Detect low performance devices
     this.detectPerformance();
@@ -52,6 +62,272 @@ export class GameEngine {
     
     this.setupEventListeners();
     this.gameLoop(0);
+  }
+
+  private initializeGraphics() {
+    // Create tile sprites
+    this.createTileSprites();
+    this.createCharacterSprites();
+    this.createUISprites();
+    
+    // Initialize lighting
+    this.initializeLighting();
+  }
+
+  private createTileSprites() {
+    const tileSize = 32;
+    
+    // Grass tile with texture
+    const grassCanvas = document.createElement('canvas');
+    grassCanvas.width = grassCanvas.height = tileSize;
+    const grassCtx = grassCanvas.getContext('2d')!;
+    
+    // Base grass color
+    grassCtx.fillStyle = '#4a7c59';
+    grassCtx.fillRect(0, 0, tileSize, tileSize);
+    
+    // Add grass texture
+    for (let i = 0; i < 20; i++) {
+      grassCtx.fillStyle = `rgba(${60 + Math.random() * 40}, ${120 + Math.random() * 40}, ${70 + Math.random() * 30}, 0.6)`;
+      grassCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 2, 4);
+    }
+    this.tileSprites['grass'] = grassCanvas;
+
+    // Stone tile with brick pattern
+    const stoneCanvas = document.createElement('canvas');
+    stoneCanvas.width = stoneCanvas.height = tileSize;
+    const stoneCtx = stoneCanvas.getContext('2d')!;
+    
+    stoneCtx.fillStyle = '#696969';
+    stoneCtx.fillRect(0, 0, tileSize, tileSize);
+    
+    // Brick pattern
+    stoneCtx.strokeStyle = '#555555';
+    stoneCtx.lineWidth = 1;
+    for (let y = 0; y < tileSize; y += 8) {
+      stoneCtx.beginPath();
+      stoneCtx.moveTo(0, y);
+      stoneCtx.lineTo(tileSize, y);
+      stoneCtx.stroke();
+    }
+    for (let x = 0; x < tileSize; x += 16) {
+      stoneCtx.beginPath();
+      stoneCtx.moveTo(x, 0);
+      stoneCtx.lineTo(x, tileSize);
+      stoneCtx.stroke();
+    }
+    this.tileSprites['stone'] = stoneCanvas;
+
+    // Dirt tile with texture
+    const dirtCanvas = document.createElement('canvas');
+    dirtCanvas.width = dirtCanvas.height = tileSize;
+    const dirtCtx = dirtCanvas.getContext('2d')!;
+    
+    dirtCtx.fillStyle = '#8b4513';
+    dirtCtx.fillRect(0, 0, tileSize, tileSize);
+    
+    // Add dirt texture
+    for (let i = 0; i < 30; i++) {
+      dirtCtx.fillStyle = `rgba(${100 + Math.random() * 50}, ${50 + Math.random() * 30}, ${10 + Math.random() * 20}, 0.4)`;
+      dirtCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 1, 1);
+    }
+    this.tileSprites['dirt'] = dirtCanvas;
+
+    // Water tile with animation
+    const waterCanvas = document.createElement('canvas');
+    waterCanvas.width = waterCanvas.height = tileSize;
+    const waterCtx = waterCanvas.getContext('2d')!;
+    
+    const gradient = waterCtx.createLinearGradient(0, 0, tileSize, tileSize);
+    gradient.addColorStop(0, '#4682b4');
+    gradient.addColorStop(0.5, '#5a9bd4');
+    gradient.addColorStop(1, '#4682b4');
+    waterCtx.fillStyle = gradient;
+    waterCtx.fillRect(0, 0, tileSize, tileSize);
+    
+    // Add water ripples
+    waterCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    waterCtx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      waterCtx.beginPath();
+      waterCtx.arc(Math.random() * tileSize, Math.random() * tileSize, 4 + Math.random() * 4, 0, Math.PI * 2);
+      waterCtx.stroke();
+    }
+    this.tileSprites['water'] = waterCanvas;
+
+    // Building/wall tile
+    const buildingCanvas = document.createElement('canvas');
+    buildingCanvas.width = buildingCanvas.height = tileSize;
+    const buildingCtx = buildingCanvas.getContext('2d')!;
+    
+    buildingCtx.fillStyle = '#654321';
+    buildingCtx.fillRect(0, 0, tileSize, tileSize);
+    
+    // Add wood grain
+    buildingCtx.strokeStyle = '#543a1a';
+    buildingCtx.lineWidth = 1;
+    for (let y = 4; y < tileSize; y += 8) {
+      buildingCtx.beginPath();
+      buildingCtx.moveTo(0, y);
+      buildingCtx.lineTo(tileSize, y);
+      buildingCtx.stroke();
+    }
+    this.tileSprites['building'] = buildingCanvas;
+
+    // Furniture tile
+    const furnitureCanvas = document.createElement('canvas');
+    furnitureCanvas.width = furnitureCanvas.height = tileSize;
+    const furnitureCtx = furnitureCanvas.getContext('2d')!;
+    
+    furnitureCtx.fillStyle = '#8B4513';
+    furnitureCtx.fillRect(0, 0, tileSize, tileSize);
+    
+    // Add furniture details
+    furnitureCtx.fillStyle = '#A0522D';
+    furnitureCtx.fillRect(2, 2, tileSize - 4, tileSize - 4);
+    
+    furnitureCtx.strokeStyle = '#654321';
+    furnitureCtx.lineWidth = 2;
+    furnitureCtx.strokeRect(0, 0, tileSize, tileSize);
+    this.tileSprites['furniture'] = furnitureCanvas;
+
+    // Ruins tile
+    const ruinsCanvas = document.createElement('canvas');
+    ruinsCanvas.width = ruinsCanvas.height = tileSize;
+    const ruinsCtx = ruinsCanvas.getContext('2d')!;
+    
+    ruinsCtx.fillStyle = '#2f2f2f';
+    ruinsCtx.fillRect(0, 0, tileSize, tileSize);
+    
+    // Add rubble
+    for (let i = 0; i < 10; i++) {
+      ruinsCtx.fillStyle = `rgba(${80 + Math.random() * 40}, ${80 + Math.random() * 40}, ${80 + Math.random() * 40}, 0.8)`;
+      ruinsCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 3 + Math.random() * 4, 3 + Math.random() * 4);
+    }
+    this.tileSprites['ruins'] = ruinsCanvas;
+
+    // Sand tile
+    const sandCanvas = document.createElement('canvas');
+    sandCanvas.width = sandCanvas.height = tileSize;
+    const sandCtx = sandCanvas.getContext('2d')!;
+    
+    sandCtx.fillStyle = '#f4a460';
+    sandCtx.fillRect(0, 0, tileSize, tileSize);
+    
+    // Add sand texture
+    for (let i = 0; i < 50; i++) {
+      sandCtx.fillStyle = `rgba(${240 + Math.random() * 15}, ${160 + Math.random() * 20}, ${90 + Math.random() * 10}, 0.3)`;
+      sandCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 1, 1);
+    }
+    this.tileSprites['sand'] = sandCanvas;
+  }
+
+  private createCharacterSprites() {
+    const spriteSize = 24;
+    
+    // Player sprite
+    const playerCanvas = document.createElement('canvas');
+    playerCanvas.width = playerCanvas.height = spriteSize;
+    const playerCtx = playerCanvas.getContext('2d')!;
+    
+    // Body
+    playerCtx.fillStyle = '#4a90e2';
+    playerCtx.fillRect(6, 8, 12, 16);
+    
+    // Head
+    playerCtx.fillStyle = '#fdbcb4';
+    playerCtx.fillRect(8, 2, 8, 8);
+    
+    // Arms
+    playerCtx.fillStyle = '#4a90e2';
+    playerCtx.fillRect(2, 10, 4, 10);
+    playerCtx.fillRect(18, 10, 4, 10);
+    
+    // Legs
+    playerCtx.fillStyle = '#2c5aa0';
+    playerCtx.fillRect(8, 20, 3, 4);
+    playerCtx.fillRect(13, 20, 3, 4);
+    
+    this.characterSprites['player'] = playerCanvas;
+
+    // NPC sprite
+    const npcCanvas = document.createElement('canvas');
+    npcCanvas.width = npcCanvas.height = spriteSize;
+    const npcCtx = npcCanvas.getContext('2d')!;
+    
+    // Body
+    npcCtx.fillStyle = '#44ff44';
+    npcCtx.fillRect(6, 8, 12, 16);
+    
+    // Head
+    npcCtx.fillStyle = '#fdbcb4';
+    npcCtx.fillRect(8, 2, 8, 8);
+    
+    // Arms
+    npcCtx.fillStyle = '#44ff44';
+    npcCtx.fillRect(2, 10, 4, 10);
+    npcCtx.fillRect(18, 10, 4, 10);
+    
+    // Legs
+    npcCtx.fillStyle = '#2c8c2c';
+    npcCtx.fillRect(8, 20, 3, 4);
+    npcCtx.fillRect(13, 20, 3, 4);
+    
+    this.characterSprites['npc'] = npcCanvas;
+
+    // Enemy sprite
+    const enemyCanvas = document.createElement('canvas');
+    enemyCanvas.width = enemyCanvas.height = spriteSize;
+    const enemyCtx = enemyCanvas.getContext('2d')!;
+    
+    // Body
+    enemyCtx.fillStyle = '#ff0000';
+    enemyCtx.fillRect(6, 8, 12, 16);
+    
+    // Head
+    enemyCtx.fillStyle = '#cc0000';
+    enemyCtx.fillRect(8, 2, 8, 8);
+    
+    // Arms
+    enemyCtx.fillStyle = '#ff0000';
+    enemyCtx.fillRect(2, 10, 4, 10);
+    enemyCtx.fillRect(18, 10, 4, 10);
+    
+    // Legs
+    enemyCtx.fillStyle = '#aa0000';
+    enemyCtx.fillRect(8, 20, 3, 4);
+    enemyCtx.fillRect(13, 20, 3, 4);
+    
+    this.characterSprites['enemy'] = enemyCanvas;
+  }
+
+  private createUISprites() {
+    // Health bar background
+    const healthBgCanvas = document.createElement('canvas');
+    healthBgCanvas.width = 200;
+    healthBgCanvas.height = 20;
+    const healthBgCtx = healthBgCanvas.getContext('2d')!;
+    
+    healthBgCtx.fillStyle = '#333333';
+    healthBgCtx.fillRect(0, 0, 200, 20);
+    healthBgCtx.strokeStyle = '#666666';
+    healthBgCtx.lineWidth = 2;
+    healthBgCtx.strokeRect(0, 0, 200, 20);
+    
+    this.uiSprites['healthBg'] = healthBgCanvas;
+  }
+
+  private initializeLighting() {
+    // Add ambient lighting for interiors
+    this.lightingSystem = [];
+    
+    // Player light source
+    this.lightingSystem.push({
+      position: { x: 0, y: 0 },
+      radius: 100,
+      intensity: 0.8,
+      color: '#ffffff'
+    });
   }
 
   private detectPerformance() {
@@ -299,33 +575,50 @@ export class GameEngine {
       this.transitionCooldown -= deltaTime;
     }
 
-    // Reduce movement speed slightly for smoother movement
-    const speed = this.isLowPerformanceDevice ? 96 : 112;
+    // Movement speed
+    const speed = this.isLowPerformanceDevice ? 96 : 128;
     const moveDistance = speed * (deltaTime / 1000);
     
     let newX = this.gameState.player.position.x;
     let newY = this.gameState.player.position.y;
     let moved = false;
+    let direction = this.gameState.player.direction;
+
+    // Handle diagonal movement
+    let moveX = 0;
+    let moveY = 0;
 
     if (this.keys['w'] || this.keys['arrowup']) {
-      newY -= moveDistance;
-      this.gameState.player.direction = 'up';
-      moved = true;
+      moveY = -1;
     }
     if (this.keys['s'] || this.keys['arrowdown']) {
-      newY += moveDistance;
-      this.gameState.player.direction = 'down';
-      moved = true;
+      moveY = 1;
     }
     if (this.keys['a'] || this.keys['arrowleft']) {
-      newX -= moveDistance;
-      this.gameState.player.direction = 'left';
-      moved = true;
+      moveX = -1;
     }
     if (this.keys['d'] || this.keys['arrowright']) {
-      newX += moveDistance;
-      this.gameState.player.direction = 'right';
+      moveX = 1;
+    }
+
+    // Normalize diagonal movement
+    if (moveX !== 0 && moveY !== 0) {
+      moveX *= 0.707; // sqrt(2)/2 for diagonal normalization
+      moveY *= 0.707;
+    }
+
+    if (moveX !== 0 || moveY !== 0) {
+      newX += moveX * moveDistance;
+      newY += moveY * moveDistance;
       moved = true;
+
+      // Update direction based on movement
+      if (moveX > 0) direction = 'right';
+      else if (moveX < 0) direction = 'left';
+      else if (moveY > 0) direction = 'down';
+      else if (moveY < 0) direction = 'up';
+
+      this.gameState.player.direction = direction;
     }
 
     if (moved) {
@@ -366,6 +659,9 @@ export class GameEngine {
         this.gameState.player.position.x = newX;
         this.gameState.player.position.y = newY;
         this.gameState.player.isMoving = true;
+        
+        // Update lighting position
+        this.lightingSystem[0].position = { x: newX, y: newY };
         
         // Only update camera and visibility if player moved significantly
         const playerMoved = Math.abs(newX - this.lastPlayerPosition.x) > 8 || 
@@ -523,7 +819,7 @@ export class GameEngine {
     this.gameState.camera.x = Math.max(0, Math.min(newCameraX, mapWidth - this.canvas.width));
     this.gameState.camera.y = Math.max(0, Math.min(newCameraY, mapHeight - this.canvas.height));
 
-    // Update render bounds only if camera moved significantly (increased threshold)
+    // Update render bounds only if camera moved significantly
     if (Math.abs(this.gameState.camera.x - this.lastCameraPosition.x) > 32 || 
         Math.abs(this.gameState.camera.y - this.lastCameraPosition.y) > 32) {
       
@@ -540,7 +836,7 @@ export class GameEngine {
   private updateVisibility() {
     const playerTileX = Math.floor(this.gameState.player.position.x / 32);
     const playerTileY = Math.floor(this.gameState.player.position.y / 32);
-    const visionRange = this.isLowPerformanceDevice ? 6 : 8; // Reduce vision range on low-end devices
+    const visionRange = this.isLowPerformanceDevice ? 6 : 10;
     
     const actualMapHeight = this.gameState.currentMap.tiles.length;
     const actualMapWidth = this.gameState.currentMap.tiles[0]?.length || 0;
@@ -597,6 +893,7 @@ export class GameEngine {
       // Update game logic
       this.updatePlayerMovement(deltaTime);
       this.updateGameTime(deltaTime);
+      this.updateParticles(deltaTime);
 
       // Smart rendering - skip frames when performance is poor
       const shouldRender = this.renderSkipCounter >= this.maxRenderSkip || 
@@ -623,22 +920,51 @@ export class GameEngine {
     this.gameState.dayNightCycle = (this.gameState.gameTime % dayLength) / dayLength;
   }
 
+  private updateParticles(deltaTime: number) {
+    // Update particle system
+    this.particleSystem = this.particleSystem.filter(particle => {
+      particle.life -= deltaTime / 1000;
+      particle.position.x += particle.velocity.x * deltaTime / 1000;
+      particle.position.y += particle.velocity.y * deltaTime / 1000;
+      particle.velocity.y += 50 * deltaTime / 1000; // Gravity
+      return particle.life > 0;
+    });
+  }
+
   private render() {
-    // Clear canvas
-    this.ctx.fillStyle = '#1a1a1a';
+    // Clear canvas with gradient background
+    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+    
+    if (this.gameState.currentMap.isInterior) {
+      gradient.addColorStop(0, '#2a2a2a');
+      gradient.addColorStop(1, '#1a1a1a');
+    } else {
+      // Outdoor gradient based on time of day
+      const timeOfDay = this.gameState.dayNightCycle;
+      if (timeOfDay < 0.25 || timeOfDay > 0.75) { // Night
+        gradient.addColorStop(0, '#0a0a2a');
+        gradient.addColorStop(1, '#000015');
+      } else if (timeOfDay < 0.5) { // Day
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(1, '#98D8E8');
+      } else { // Evening
+        gradient.addColorStop(0, '#FF6B35');
+        gradient.addColorStop(1, '#F7931E');
+      }
+    }
+    
+    this.ctx.fillStyle = gradient;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Always use optimized rendering
-    if (true) { // Force optimized rendering for better performance
-      this.renderLowGraphics();
-    } else {
-      this.renderTiles();
-      this.renderNPCs();
-      this.renderEnemies();
-      this.renderLootables();
-      this.renderPlayer();
-      this.renderUI();
-    }
+    // Render game world
+    this.renderTiles();
+    this.renderLootables();
+    this.renderNPCs();
+    this.renderEnemies();
+    this.renderPlayer();
+    this.renderParticles();
+    this.renderLighting();
+    this.renderUI();
     
     if (this.isAtEdge && this.edgeTimer > 0) {
       this.renderEdgeTimer();
@@ -647,46 +973,52 @@ export class GameEngine {
   
   private renderEdgeTimer() {
     const progress = this.edgeTimer / 2000;
-    const barWidth = 200;
-    const barHeight = 20;
+    const barWidth = 300;
+    const barHeight = 30;
     const x = (this.canvas.width - barWidth) / 2;
     const y = 50;
     
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    this.ctx.fillRect(x - 10, y - 10, barWidth + 20, barHeight + 20);
+    // Background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(x - 20, y - 20, barWidth + 40, barHeight + 60);
     
+    // Progress bar background
     this.ctx.fillStyle = '#333333';
     this.ctx.fillRect(x, y, barWidth, barHeight);
     
-    this.ctx.fillStyle = '#ffaa00';
+    // Progress bar fill
+    const progressGradient = this.ctx.createLinearGradient(x, y, x + barWidth, y);
+    progressGradient.addColorStop(0, '#ffaa00');
+    progressGradient.addColorStop(1, '#ff6600');
+    this.ctx.fillStyle = progressGradient;
     this.ctx.fillRect(x, y, barWidth * progress, barHeight);
     
+    // Border
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x, y, barWidth, barHeight);
+    
+    // Text
     this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = '14px Arial';
+    this.ctx.font = 'bold 16px Arial';
     this.ctx.textAlign = 'center';
     this.ctx.fillText(
       `Transitioning to ${this.edgeDirection}... ${Math.ceil((2000 - this.edgeTimer) / 1000)}s`,
       this.canvas.width / 2,
-      y + barHeight + 25
+      y + barHeight + 35
     );
   }
-  
-  private renderLowGraphics() {
-    // Ensure we have valid render bounds
+
+  private renderTiles() {
     const actualMapHeight = this.gameState.currentMap.tiles.length;
     const actualMapWidth = this.gameState.currentMap.tiles[0]?.length || 0;
     
-    // Clamp render bounds to actual map size
+    const isInterior = this.gameState.currentMap.isInterior;
+    
     const startY = Math.max(0, Math.min(this.renderBounds.startY, actualMapHeight - 1));
     const endY = Math.min(this.renderBounds.endY, actualMapHeight);
     const startX = Math.max(0, Math.min(this.renderBounds.startX, actualMapWidth - 1));
     const endX = Math.min(this.renderBounds.endX, actualMapWidth);
-    
-    // Batch rendering for better performance
-    this.ctx.save();
-    
-    // Pre-calculate colors to avoid repeated function calls
-    const colorCache = new Map<string, string>();
     
     for (let y = startY; y < endY; y++) {
       for (let x = startX; x < endX; x++) {
@@ -696,89 +1028,414 @@ export class GameEngine {
         
         const tile = this.gameState.currentMap.tiles[y][x];
         
-        // For interior maps, always render tiles
-        if (!this.gameState.currentMap.isInterior && !tile.discovered) continue;
+        if (!isInterior && !tile.discovered) continue;
 
         const screenX = x * 32 - this.gameState.camera.x;
         const screenY = y * 32 - this.gameState.camera.y;
-        
+
         // Skip tiles that are completely off-screen
         if (screenX < -32 || screenX > this.canvas.width || 
             screenY < -32 || screenY > this.canvas.height) continue;
 
-        const cacheKey = `${tile.type}_${tile.visible}_${this.gameState.currentMap.isInterior}`;
-        let color = colorCache.get(cacheKey);
-        
-        if (!color) {
-          color = this.getTileColor(tile.type);
-          if (!this.gameState.currentMap.isInterior && !tile.visible) {
-            color = this.darkenColor(color, 0.5);
-          }
-          colorCache.set(cacheKey, color);
+        // Use sprite if available, otherwise fallback to color
+        const sprite = this.tileSprites[tile.type];
+        if (sprite) {
+          this.ctx.drawImage(sprite, screenX, screenY);
+        } else {
+          this.ctx.fillStyle = this.getTileColor(tile.type);
+          this.ctx.fillRect(screenX, screenY, 32, 32);
         }
 
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(screenX, screenY, 32, 32);
+        // Apply darkness for non-visible exterior tiles
+        if (!isInterior && !tile.visible) {
+          this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          this.ctx.fillRect(screenX, screenY, 32, 32);
+        }
         
-        // Add borders for interior maps to show structure
-        if (this.gameState.currentMap.isInterior) {
-          this.ctx.strokeStyle = '#000000';
-          this.ctx.lineWidth = 1;
-          this.ctx.strokeRect(screenX, screenY, 32, 32);
+        // Render entrance indicator for enterable buildings
+        if (!isInterior && tile.isEnterable && tile.visible) {
+          this.ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+          this.ctx.fillRect(screenX + 8, screenY + 8, 16, 16);
+          this.ctx.fillStyle = '#000000';
+          this.ctx.font = 'bold 14px Arial';
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText('E', screenX + 16, screenY + 20);
         }
       }
     }
-    
-    this.ctx.restore();
-    
-    this.renderPlayer();
-    this.renderNearbyEntities();
-    this.renderSimpleUI();
   }
-  
-  private renderNearbyEntities() {
-    const playerPos = this.gameState.player.position;
-    const renderDistance = this.isLowPerformanceDevice ? 150 : 200;
+
+  private getTileColor(type: string): string {
+    switch (type) {
+      case 'grass': return '#4a7c59';
+      case 'dirt': return '#8b4513';
+      case 'stone': return '#696969';
+      case 'water': return '#4682b4';
+      case 'lava': return '#ff4500';
+      case 'ice': return '#b0e0e6';
+      case 'sand': return '#f4a460';
+      case 'ruins': return '#2f2f2f';
+      case 'building': return '#654321';
+      case 'furniture': return '#8B4513';
+      default: return '#333333';
+    }
+  }
+
+  private renderPlayer() {
+    const screenX = this.gameState.player.position.x - this.gameState.camera.x;
+    const screenY = this.gameState.player.position.y - this.gameState.camera.y;
+
+    // Use sprite if available
+    const sprite = this.characterSprites['player'];
+    if (sprite) {
+      this.ctx.drawImage(sprite, screenX - 12, screenY - 12);
+    } else {
+      // Fallback rendering
+      this.ctx.fillStyle = '#4a90e2';
+      this.ctx.fillRect(screenX - 12, screenY - 12, 24, 24);
+    }
     
-    // Render nearby NPCs
+    // Direction indicator
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.beginPath();
+    switch (this.gameState.player.direction) {
+      case 'up':
+        this.ctx.moveTo(screenX, screenY - 15);
+        this.ctx.lineTo(screenX - 4, screenY - 8);
+        this.ctx.lineTo(screenX + 4, screenY - 8);
+        break;
+      case 'down':
+        this.ctx.moveTo(screenX, screenY + 15);
+        this.ctx.lineTo(screenX - 4, screenY + 8);
+        this.ctx.lineTo(screenX + 4, screenY + 8);
+        break;
+      case 'left':
+        this.ctx.moveTo(screenX - 15, screenY);
+        this.ctx.lineTo(screenX - 8, screenY - 4);
+        this.ctx.lineTo(screenX - 8, screenY + 4);
+        break;
+      case 'right':
+        this.ctx.moveTo(screenX + 15, screenY);
+        this.ctx.lineTo(screenX + 8, screenY - 4);
+        this.ctx.lineTo(screenX + 8, screenY + 4);
+        break;
+    }
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Player name
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.strokeStyle = '#000000';
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeText(this.gameState.player.name, screenX, screenY - 25);
+    this.ctx.fillText(this.gameState.player.name, screenX, screenY - 25);
+  }
+
+  private renderNPCs() {
     this.gameState.currentMap.npcs.forEach(npc => {
-      const distance = Math.sqrt(
-        Math.pow(npc.position.x - playerPos.x, 2) + 
-        Math.pow(npc.position.y - playerPos.y, 2)
-      );
-      
-      if (distance <= renderDistance) {
-        const screenX = npc.position.x - this.gameState.camera.x;
-        const screenY = npc.position.y - this.gameState.camera.y;
-        
-        // Skip if off-screen
-        if (screenX < -16 || screenX > this.canvas.width + 16 || 
-            screenY < -16 || screenY > this.canvas.height + 16) return;
-        
+      const screenX = npc.position.x - this.gameState.camera.x;
+      const screenY = npc.position.y - this.gameState.camera.y;
+
+      if (screenX < -32 || screenX > this.canvas.width + 32 || 
+          screenY < -32 || screenY > this.canvas.height + 32) return;
+
+      const tileX = Math.floor(npc.position.x / 32);
+      const tileY = Math.floor(npc.position.y / 32);
+      if (!this.gameState.currentMap.isInterior && !this.gameState.currentMap.tiles[tileY]?.[tileX]?.discovered) return;
+
+      // Use sprite if available
+      const sprite = this.characterSprites['npc'];
+      if (sprite) {
+        this.ctx.drawImage(sprite, screenX - 12, screenY - 12);
+      } else {
         this.ctx.fillStyle = npc.isHostile ? '#ff4444' : '#44ff44';
-        this.ctx.fillRect(screenX - 8, screenY - 8, 16, 16);
+        this.ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
       }
+
+      // NPC name
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.font = '10px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.strokeStyle = '#000000';
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeText(npc.name, screenX, screenY - 20);
+      this.ctx.fillText(npc.name, screenX, screenY - 20);
     });
-    
-    // Render nearby enemies
+  }
+
+  private renderEnemies() {
     this.gameState.currentMap.enemies.forEach(enemy => {
-      const distance = Math.sqrt(
-        Math.pow(enemy.position.x - playerPos.x, 2) + 
-        Math.pow(enemy.position.y - playerPos.y, 2)
-      );
-      
-      if (distance <= renderDistance) {
-        const screenX = enemy.position.x - this.gameState.camera.x;
-        const screenY = enemy.position.y - this.gameState.camera.y;
-        
-        // Skip if off-screen
-        if (screenX < -16 || screenX > this.canvas.width + 16 || 
-            screenY < -16 || screenY > this.canvas.height + 16) return;
-        
+      const screenX = enemy.position.x - this.gameState.camera.x;
+      const screenY = enemy.position.y - this.gameState.camera.y;
+
+      if (screenX < -32 || screenX > this.canvas.width + 32 || 
+          screenY < -32 || screenY > this.canvas.height + 32) return;
+
+      const tileX = Math.floor(enemy.position.x / 32);
+      const tileY = Math.floor(enemy.position.y / 32);
+      if (!this.gameState.currentMap.isInterior && !this.gameState.currentMap.tiles[tileY]?.[tileX]?.discovered) return;
+
+      // Use sprite if available
+      const sprite = this.characterSprites['enemy'];
+      if (sprite) {
+        this.ctx.drawImage(sprite, screenX - 12, screenY - 12);
+      } else {
         this.ctx.fillStyle = '#ff0000';
-        this.ctx.fillRect(screenX - 8, screenY - 8, 16, 16);
+        this.ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
       }
+
+      // Health bar
+      const healthPercent = enemy.health / enemy.maxHealth;
+      this.ctx.fillStyle = '#333333';
+      this.ctx.fillRect(screenX - 15, screenY - 25, 30, 4);
+      this.ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+      this.ctx.fillRect(screenX - 15, screenY - 25, 30 * healthPercent, 4);
+
+      // Enemy name
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.font = '10px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.strokeStyle = '#000000';
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeText(enemy.name, screenX, screenY + 25);
+      this.ctx.fillText(enemy.name, screenX, screenY + 25);
     });
+  }
+
+  private renderLootables() {
+    this.gameState.currentMap.lootables.forEach(lootable => {
+      if (lootable.looted) return;
+
+      const screenX = lootable.position.x - this.gameState.camera.x;
+      const screenY = lootable.position.y - this.gameState.camera.y;
+
+      if (screenX < -32 || screenX > this.canvas.width + 32 || 
+          screenY < -32 || screenY > this.canvas.height + 32) return;
+
+      const tileX = Math.floor(lootable.position.x / 32);
+      const tileY = Math.floor(lootable.position.y / 32);
+      if (!this.gameState.currentMap.isInterior && !this.gameState.currentMap.tiles[tileY]?.[tileX]?.discovered) return;
+
+      // Animated loot indicator
+      const time = Date.now() / 1000;
+      const bounce = Math.sin(time * 3) * 2;
+      
+      this.ctx.fillStyle = '#ffaa00';
+      this.ctx.fillRect(screenX - 8, screenY - 8 + bounce, 16, 16);
+      
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.font = 'bold 12px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('?', screenX, screenY + 4 + bounce);
+      
+      // Glow effect
+      this.ctx.shadowColor = '#ffaa00';
+      this.ctx.shadowBlur = 10;
+      this.ctx.strokeStyle = '#ffaa00';
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(screenX - 8, screenY - 8 + bounce, 16, 16);
+      this.ctx.shadowBlur = 0;
+    });
+  }
+
+  private renderParticles() {
+    this.particleSystem.forEach(particle => {
+      const screenX = particle.position.x - this.gameState.camera.x;
+      const screenY = particle.position.y - this.gameState.camera.y;
+      
+      this.ctx.globalAlpha = particle.life / particle.maxLife;
+      this.ctx.fillStyle = particle.color;
+      this.ctx.fillRect(screenX, screenY, particle.size, particle.size);
+      this.ctx.globalAlpha = 1;
+    });
+  }
+
+  private renderLighting() {
+    if (this.gameState.currentMap.isInterior) {
+      // Apply lighting overlay for interiors
+      this.ctx.globalCompositeOperation = 'multiply';
+      this.ctx.fillStyle = 'rgba(100, 100, 150, 0.3)';
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      
+      // Add light sources
+      this.lightingSystem.forEach(light => {
+        const screenX = light.position.x - this.gameState.camera.x;
+        const screenY = light.position.y - this.gameState.camera.y;
+        
+        const gradient = this.ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, light.radius);
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${light.intensity})`);
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(screenX - light.radius, screenY - light.radius, light.radius * 2, light.radius * 2);
+      });
+      
+      this.ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  private renderUI() {
+    // Enhanced UI with better graphics
+    const uiPadding = 20;
+    const barHeight = 25;
+    const barWidth = 250;
+    
+    // Health bar
+    this.renderStatusBar(
+      uiPadding, uiPadding,
+      barWidth, barHeight,
+      this.gameState.player.health / this.gameState.player.maxHealth,
+      '#ff0000', '#660000',
+      `Health: ${this.gameState.player.health}/${this.gameState.player.maxHealth}`
+    );
+
+    // Energy bar
+    this.renderStatusBar(
+      uiPadding, uiPadding + barHeight + 10,
+      barWidth, barHeight,
+      this.gameState.player.energy / this.gameState.player.maxEnergy,
+      '#0088ff', '#004488',
+      `Energy: ${Math.floor(this.gameState.player.energy)}/${this.gameState.player.maxEnergy}`
+    );
+
+    // Experience bar
+    this.renderStatusBar(
+      uiPadding, uiPadding + (barHeight + 10) * 2,
+      barWidth, barHeight,
+      this.gameState.player.experience / this.gameState.player.experienceToNext,
+      '#ffaa00', '#cc8800',
+      `Level ${this.gameState.player.level} - XP: ${this.gameState.player.experience}/${this.gameState.player.experienceToNext}`
+    );
+
+    // Location and time info
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.fillRect(uiPadding, this.canvas.height - 80, 300, 60);
+    
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = 'bold 14px Arial';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(`Location: ${this.gameState.currentMap.name}`, uiPadding + 10, this.canvas.height - 55);
+    
+    const timeOfDay = this.gameState.dayNightCycle < 0.25 || this.gameState.dayNightCycle > 0.75 ? 'Night' : 
+                     this.gameState.dayNightCycle < 0.5 ? 'Day' : 'Evening';
+    this.ctx.fillText(`Time: ${timeOfDay}`, uiPadding + 10, this.canvas.height - 35);
+    this.ctx.fillText(`Weather: ${this.gameState.weather}`, uiPadding + 10, this.canvas.height - 15);
+    
+    // Show exit hint for interiors
+    if (this.gameState.currentMap.isInterior && this.gameState.previousMap) {
+      this.ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+      this.ctx.font = 'bold 16px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('Press ESC to exit building', this.canvas.width / 2, 50);
+    }
+
+    // Mini-map
+    this.renderMiniMap();
+  }
+
+  private renderStatusBar(x: number, y: number, width: number, height: number, 
+                         percentage: number, fillColor: string, bgColor: string, text: string) {
+    // Background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.fillRect(x - 5, y - 5, width + 10, height + 10);
+    
+    // Bar background
+    this.ctx.fillStyle = bgColor;
+    this.ctx.fillRect(x, y, width, height);
+    
+    // Bar fill with gradient
+    const gradient = this.ctx.createLinearGradient(x, y, x + width, y);
+    gradient.addColorStop(0, fillColor);
+    gradient.addColorStop(1, this.lightenColor(fillColor, 0.3));
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(x, y, width * Math.max(0, percentage), height);
+    
+    // Border
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x, y, width, height);
+    
+    // Text
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.strokeStyle = '#000000';
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeText(text, x + width / 2, y + height / 2 + 4);
+    this.ctx.fillText(text, x + width / 2, y + height / 2 + 4);
+  }
+
+  private lightenColor(color: string, factor: number): string {
+    const hex = color.replace('#', '');
+    const r = Math.min(255, parseInt(hex.substr(0, 2), 16) + Math.floor(255 * factor));
+    const g = Math.min(255, parseInt(hex.substr(2, 2), 16) + Math.floor(255 * factor));
+    const b = Math.min(255, parseInt(hex.substr(4, 2), 16) + Math.floor(255 * factor));
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  private renderMiniMap() {
+    const miniMapSize = 150;
+    const miniMapX = this.canvas.width - miniMapSize - 20;
+    const miniMapY = 20;
+    
+    // Background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(miniMapX - 5, miniMapY - 5, miniMapSize + 10, miniMapSize + 10);
+    
+    this.ctx.fillStyle = '#000000';
+    this.ctx.fillRect(miniMapX, miniMapY, miniMapSize, miniMapSize);
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(miniMapX, miniMapY, miniMapSize, miniMapSize);
+    
+    const scaleX = miniMapSize / this.gameState.currentMap.width;
+    const scaleY = miniMapSize / this.gameState.currentMap.height;
+    
+    // Render discovered tiles
+    const sampleRate = Math.max(1, Math.floor(this.gameState.currentMap.width / 50));
+    
+    for (let y = 0; y < this.gameState.currentMap.height; y += sampleRate) {
+      for (let x = 0; x < this.gameState.currentMap.width; x += sampleRate) {
+        if (!this.gameState.currentMap.tiles[y] || !this.gameState.currentMap.tiles[y][x]) continue;
+        const tile = this.gameState.currentMap.tiles[y][x];
+        if (!tile.discovered) continue;
+        
+        const pixelX = miniMapX + x * scaleX;
+        const pixelY = miniMapY + y * scaleY;
+        
+        let color = this.getTileColor(tile.type);
+        if (!tile.visible && !this.gameState.currentMap.isInterior) {
+          color = this.darkenColor(color, 0.5);
+        }
+        
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(pixelX, pixelY, Math.max(1, scaleX * sampleRate), Math.max(1, scaleY * sampleRate));
+      }
+    }
+    
+    // Player position
+    const playerX = miniMapX + (this.gameState.player.position.x / 32) * scaleX;
+    const playerY = miniMapY + (this.gameState.player.position.y / 32) * scaleY;
+    this.ctx.fillStyle = '#ff0000';
+    this.ctx.fillRect(playerX - 2, playerY - 2, 4, 4);
+    
+    // NPCs
+    this.gameState.currentMap.npcs.forEach(npc => {
+      const npcX = miniMapX + (npc.position.x / 32) * scaleX;
+      const npcY = miniMapY + (npc.position.y / 32) * scaleY;
+      this.ctx.fillStyle = npc.isHostile ? '#ff4444' : '#44ff44';
+      this.ctx.fillRect(npcX - 1, npcY - 1, 2, 2);
+    });
+  }
+
+  private darkenColor(color: string, factor: number): string {
+    const hex = color.replace('#', '');
+    const r = Math.floor(parseInt(hex.substr(0, 2), 16) * factor);
+    const g = Math.floor(parseInt(hex.substr(2, 2), 16) * factor);
+    const b = Math.floor(parseInt(hex.substr(4, 2), 16) * factor);
+    return `rgb(${r}, ${g}, ${b})`;
   }
   
   private enterBuilding(buildingId: string) {
@@ -841,300 +1498,6 @@ export class GameEngine {
     this.updateVisibility();
     this.notifyStateChange();
   }
-  private renderSimpleUI() {
-    // Batch UI rendering
-    this.ctx.save();
-    
-    const healthPercent = this.gameState.player.health / this.gameState.player.maxHealth;
-    this.ctx.fillStyle = '#333333';
-    this.ctx.fillRect(10, 10, 150, 15);
-    this.ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
-    this.ctx.fillRect(10, 10, 150 * healthPercent, 15);
-    
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = '12px Arial';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(`HP: ${this.gameState.player.health}/${this.gameState.player.maxHealth}`, 15, 22);
-    this.ctx.fillText(`Level: ${this.gameState.player.level}`, 15, 40);
-    
-    this.ctx.restore();
-  }
-
-  private renderTiles() {
-    // Ensure we have valid render bounds
-    const actualMapHeight = this.gameState.currentMap.tiles.length;
-    const actualMapWidth = this.gameState.currentMap.tiles[0]?.length || 0;
-    
-    // For interior maps, render all tiles regardless of discovery
-    const isInterior = this.gameState.currentMap.isInterior;
-    
-    // Clamp render bounds to actual map size
-    const startY = Math.max(0, Math.min(this.renderBounds.startY, actualMapHeight - 1));
-    const endY = Math.min(this.renderBounds.endY, actualMapHeight);
-    const startX = Math.max(0, Math.min(this.renderBounds.startX, actualMapWidth - 1));
-    const endX = Math.min(this.renderBounds.endX, actualMapWidth);
-    
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
-        // Ensure we don't access out-of-bounds tiles
-        if (!this.gameState.currentMap.tiles[y] || !this.gameState.currentMap.tiles[y][x]) {
-          continue;
-        }
-        
-        const tile = this.gameState.currentMap.tiles[y][x];
-        
-        // For interior maps, always render tiles. For exterior maps, check discovery
-        if (!isInterior && !tile.discovered) continue;
-
-        const screenX = x * 32 - this.gameState.camera.x;
-        const screenY = y * 32 - this.gameState.camera.y;
-
-        let color = this.getTileColor(tile.type);
-        
-        // For interior maps, don't darken tiles. For exterior maps, darken non-visible tiles
-        if (!isInterior && !tile.visible) {
-          color = this.darkenColor(color, 0.5);
-        }
-
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(screenX, screenY, 32, 32);
-
-        // Only draw borders in high quality mode
-        if (!this.isLowPerformanceDevice && !isInterior) {
-          this.ctx.strokeStyle = this.darkenColor(color, 0.8);
-          this.ctx.lineWidth = 1;
-          this.ctx.strokeRect(screenX, screenY, 32, 32);
-        }
-        
-        // For interior maps, draw clear borders to show room structure
-        if (isInterior && !this.isLowPerformanceDevice) {
-          this.ctx.strokeStyle = '#000000';
-          this.ctx.lineWidth = 1;
-          this.ctx.strokeRect(screenX, screenY, 32, 32);
-        }
-        
-        // Render entrance indicator for enterable buildings
-        if (!isInterior && tile.isEnterable && tile.visible && !this.isLowPerformanceDevice) {
-          this.ctx.fillStyle = '#ffff00';
-          this.ctx.fillRect(screenX + 8, screenY + 8, 16, 16);
-          this.ctx.fillStyle = '#000000';
-          this.ctx.font = '14px Arial';
-          this.ctx.textAlign = 'center';
-          this.ctx.fillText('E', screenX + 16, screenY + 20);
-        }
-      }
-    }
-  }
-
-  private getTileColor(type: string): string {
-    switch (type) {
-      case 'grass': return '#4a7c59';
-      case 'dirt': return '#8b4513';
-      case 'stone': return '#696969';
-      case 'water': return '#4682b4';
-      case 'lava': return '#ff4500';
-      case 'ice': return '#b0e0e6';
-      case 'sand': return '#f4a460';
-      case 'ruins': return '#2f2f2f';
-      case 'building': return '#654321';
-      case 'furniture': return '#8B4513'; // Brown color for furniture
-      default: return '#333333';
-    }
-  }
-
-  private darkenColor(color: string, factor: number): string {
-    const hex = color.replace('#', '');
-    const r = Math.floor(parseInt(hex.substr(0, 2), 16) * factor);
-    const g = Math.floor(parseInt(hex.substr(2, 2), 16) * factor);
-    const b = Math.floor(parseInt(hex.substr(4, 2), 16) * factor);
-    return `rgb(${r}, ${g}, ${b})`;
-  }
-
-  private renderPlayer() {
-    const screenX = this.gameState.player.position.x - this.gameState.camera.x;
-    const screenY = this.gameState.player.position.y - this.gameState.camera.y;
-
-    this.ctx.fillStyle = '#4a90e2';
-    this.ctx.fillRect(screenX - 12, screenY - 12, 24, 24);
-    
-    this.ctx.fillStyle = '#ffffff';
-    switch (this.gameState.player.direction) {
-      case 'up':
-        this.ctx.fillRect(screenX - 4, screenY - 12, 8, 4);
-        break;
-      case 'down':
-        this.ctx.fillRect(screenX - 4, screenY + 8, 8, 4);
-        break;
-      case 'left':
-        this.ctx.fillRect(screenX - 12, screenY - 4, 4, 8);
-        break;
-      case 'right':
-        this.ctx.fillRect(screenX + 8, screenY - 4, 4, 8);
-        break;
-    }
-
-    if (!this.isLowPerformanceDevice) {
-      this.ctx.fillStyle = '#ffffff';
-      this.ctx.font = '12px Arial';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText(this.gameState.player.name, screenX, screenY - 20);
-    }
-  }
-
-  private renderNPCs() {
-    this.gameState.currentMap.npcs.forEach(npc => {
-      const screenX = npc.position.x - this.gameState.camera.x;
-      const screenY = npc.position.y - this.gameState.camera.y;
-
-      if (screenX < -32 || screenX > this.canvas.width + 32 || 
-          screenY < -32 || screenY > this.canvas.height + 32) return;
-
-      const tileX = Math.floor(npc.position.x / 32);
-      const tileY = Math.floor(npc.position.y / 32);
-      if (!this.gameState.currentMap.tiles[tileY]?.[tileX]?.discovered) return;
-
-      this.ctx.fillStyle = npc.isHostile ? '#ff4444' : '#44ff44';
-      this.ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
-
-      if (!this.isLowPerformanceDevice) {
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '10px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(npc.name, screenX, screenY - 15);
-      }
-    });
-  }
-
-  private renderEnemies() {
-    this.gameState.currentMap.enemies.forEach(enemy => {
-      const screenX = enemy.position.x - this.gameState.camera.x;
-      const screenY = enemy.position.y - this.gameState.camera.y;
-
-      if (screenX < -32 || screenX > this.canvas.width + 32 || 
-          screenY < -32 || screenY > this.canvas.height + 32) return;
-
-      const tileX = Math.floor(enemy.position.x / 32);
-      const tileY = Math.floor(enemy.position.y / 32);
-      if (!this.gameState.currentMap.tiles[tileY]?.[tileX]?.discovered) return;
-
-      this.ctx.fillStyle = '#ff0000';
-      this.ctx.fillRect(screenX - 10, screenY - 10, 20, 20);
-
-      if (!this.isLowPerformanceDevice) {
-        const healthPercent = enemy.health / enemy.maxHealth;
-        this.ctx.fillStyle = '#333333';
-        this.ctx.fillRect(screenX - 12, screenY - 18, 24, 4);
-        this.ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
-        this.ctx.fillRect(screenX - 12, screenY - 18, 24 * healthPercent, 4);
-
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '10px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(enemy.name, screenX, screenY + 25);
-      }
-    });
-  }
-
-  private renderLootables() {
-    this.gameState.currentMap.lootables.forEach(lootable => {
-      if (lootable.looted) return;
-
-      const screenX = lootable.position.x - this.gameState.camera.x;
-      const screenY = lootable.position.y - this.gameState.camera.y;
-
-      if (screenX < -32 || screenX > this.canvas.width + 32 || 
-          screenY < -32 || screenY > this.canvas.height + 32) return;
-
-      const tileX = Math.floor(lootable.position.x / 32);
-      const tileY = Math.floor(lootable.position.y / 32);
-      if (!this.gameState.currentMap.tiles[tileY]?.[tileX]?.discovered) return;
-
-      this.ctx.fillStyle = '#ffaa00';
-      this.ctx.fillRect(screenX - 8, screenY - 8, 16, 16);
-      
-      if (!this.isLowPerformanceDevice) {
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '12px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('?', screenX, screenY + 4);
-      }
-    });
-  }
-
-  private renderUI() {
-    const healthPercent = this.gameState.player.health / this.gameState.player.maxHealth;
-    this.ctx.fillStyle = '#333333';
-    this.ctx.fillRect(10, 10, 200, 20);
-    this.ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
-    this.ctx.fillRect(10, 10, 200 * healthPercent, 20);
-    
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = '14px Arial';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(`Health: ${this.gameState.player.health}/${this.gameState.player.maxHealth}`, 15, 25);
-
-    const energyPercent = this.gameState.player.energy / this.gameState.player.maxEnergy;
-    this.ctx.fillStyle = '#333333';
-    this.ctx.fillRect(10, 35, 200, 20);
-    this.ctx.fillStyle = '#0088ff';
-    this.ctx.fillRect(10, 35, 200 * energyPercent, 20);
-    this.ctx.fillText(`Energy: ${Math.floor(this.gameState.player.energy)}/${this.gameState.player.maxEnergy}`, 15, 50);
-
-    this.ctx.fillText(`Level: ${this.gameState.player.level}`, 15, 75);
-    this.ctx.fillText(`XP: ${this.gameState.player.experience}/${this.gameState.player.experienceToNext}`, 15, 90);
-    this.ctx.fillText(`Location: ${this.gameState.currentMap.name}`, 15, 110);
-    
-    // Show exit hint for interiors
-    if (this.gameState.currentMap.isInterior && this.gameState.previousMap) {
-      this.ctx.fillStyle = '#ffff00';
-      this.ctx.font = '12px Arial';
-      this.ctx.fillText('Press ESC to exit building', 15, 130);
-    }
-
-    // Only render mini-map on high performance devices
-    if (!this.isLowPerformanceDevice) {
-      this.renderMiniMap();
-    }
-  }
-
-  private renderMiniMap() {
-    // Skip minimap on low performance devices
-    if (this.isLowPerformanceDevice) return;
-    
-    const miniMapSize = 120;
-    const miniMapX = this.canvas.width - miniMapSize - 10;
-    const miniMapY = 10;
-    
-    this.ctx.fillStyle = '#000000';
-    this.ctx.fillRect(miniMapX, miniMapY, miniMapSize, miniMapSize);
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.strokeRect(miniMapX, miniMapY, miniMapSize, miniMapSize);
-    
-    const scaleX = miniMapSize / this.gameState.currentMap.width;
-    const scaleY = miniMapSize / this.gameState.currentMap.height;
-    
-    // Increase sample rate for better performance
-    const sampleRate = 6;
-    
-    for (let y = 0; y < this.gameState.currentMap.height; y += sampleRate) {
-      for (let x = 0; x < this.gameState.currentMap.width; x += sampleRate) {
-        if (!this.gameState.currentMap.tiles[y] || !this.gameState.currentMap.tiles[y][x]) continue;
-        const tile = this.gameState.currentMap.tiles[y][x];
-        if (!tile.discovered) continue;
-        
-        const pixelX = miniMapX + x * scaleX;
-        const pixelY = miniMapY + y * scaleY;
-        
-        this.ctx.fillStyle = tile.visible ? '#888888' : '#444444';
-        this.ctx.fillRect(pixelX, pixelY, Math.max(1, scaleX * sampleRate), Math.max(1, scaleY * sampleRate));
-      }
-    }
-    
-    const playerX = miniMapX + (this.gameState.player.position.x / 32) * scaleX;
-    const playerY = miniMapY + (this.gameState.player.position.y / 32) * scaleY;
-    this.ctx.fillStyle = '#ff0000';
-    this.ctx.fillRect(playerX - 1, playerY - 1, 3, 3);
-  }
 
   public setStateChangeCallback(callback: (newState: GameState) => void) {
     this.stateChangeCallback = callback;
@@ -1167,4 +1530,21 @@ export class GameEngine {
       cancelAnimationFrame(this.animationId);
     }
   }
+}
+
+// Particle system interfaces
+interface Particle {
+  position: Position;
+  velocity: Position;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
+}
+
+interface LightSource {
+  position: Position;
+  radius: number;
+  intensity: number;
+  color: string;
 }
