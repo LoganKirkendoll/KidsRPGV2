@@ -201,19 +201,6 @@ const selectFromLootTable = (lootTable: any[]) => {
   return lootTable[Math.floor(Math.random() * lootTable.length)];
 };
 
-// Helper function to check if a position is valid for spawning
-const isValidSpawnPosition = (position: { x: number, y: number }, tiles: any[][]) => {
-  const tileX = Math.floor(position.x / 32);
-  const tileY = Math.floor(position.y / 32);
-  
-  if (tileX < 0 || tileX >= tiles[0].length || tileY < 0 || tileY >= tiles.length) {
-    return false;
-  }
-  
-  const tile = tiles[tileY][tileX];
-  return tile.walkable && tile.type !== 'water' && tile.type !== 'building';
-};
-
 // CAPITAL WASTELAND - Starting area with proper paths
 export const createCapitalWasteland = (): GameMap => {
   const width = 120;
@@ -332,30 +319,6 @@ export const createCapitalWasteland = (): GameMap => {
     createBuildingArea(tiles, area.x, area.y, area.radius, 'ruins');
   });
   
-  // Add some enemies to the map
-  const mapEnemies = enemies.filter(enemy => !enemy.mapId || enemy.mapId === 'capital_wasteland');
-  
-  // Spawn enemies at random locations
-  const spawnedEnemies = [];
-  for (let i = 0; i < 8; i++) {
-    const enemyTemplate = mapEnemies[Math.floor(Math.random() * mapEnemies.length)];
-    const enemy = { ...enemyTemplate };
-    
-    // Find a valid spawn position
-    let attempts = 0;
-    do {
-      enemy.position = {
-        x: Math.floor(Math.random() * width) * 32 + 16,
-        y: Math.floor(Math.random() * height) * 32 + 16
-      };
-      attempts++;
-    } while (!isValidSpawnPosition(enemy.position, tiles) && attempts < 50);
-    
-    if (attempts < 50) {
-      spawnedEnemies.push(enemy);
-    }
-  }
-  
   const connections: MapConnection[] = [
     {
       direction: 'north',
@@ -391,7 +354,7 @@ export const createCapitalWasteland = (): GameMap => {
     name: 'Capital Wasteland',
     bgMusic: 'wasteland_ambient',
     npcs: npcs.filter(npc => !npc.mapId || npc.mapId === 'capital_wasteland'),
-    enemies: spawnedEnemies,
+    enemies: enemies.filter(enemy => !enemy.mapId || enemy.mapId === 'capital_wasteland'),
     lootables: createLootables(width, height, 0.003), // Very rare lootables
     connections
   };
@@ -457,28 +420,6 @@ export const createNorthernWasteland = (): GameMap => {
     createPath(tiles, buildingCenterX, buildingCenterY, buildingCenterX, nearestRoadY, 'stone');
   });
   
-  // Add enemies to northern wasteland
-  const northernEnemies = enemies.filter(enemy => enemy.mapId === 'northern_wasteland' || !enemy.mapId);
-  const spawnedNorthernEnemies = [];
-  
-  for (let i = 0; i < 6; i++) {
-    const enemyTemplate = northernEnemies[Math.floor(Math.random() * northernEnemies.length)];
-    const enemy = { ...enemyTemplate };
-    
-    let attempts = 0;
-    do {
-      enemy.position = {
-        x: Math.floor(Math.random() * width) * 32 + 16,
-        y: Math.floor(Math.random() * height) * 32 + 16
-      };
-      attempts++;
-    } while (!isValidSpawnPosition(enemy.position, tiles) && attempts < 50);
-    
-    if (attempts < 50) {
-      spawnedNorthernEnemies.push(enemy);
-    }
-  }
-  
   const connections: MapConnection[] = [
     {
       direction: 'south',
@@ -502,7 +443,7 @@ export const createNorthernWasteland = (): GameMap => {
     name: 'Northern Wasteland',
     bgMusic: 'industrial_ambient',
     npcs: npcs.filter(npc => npc.mapId === 'northern_wasteland'),
-    enemies: spawnedNorthernEnemies,
+    enemies: enemies.filter(enemy => enemy.mapId === 'northern_wasteland'),
     lootables: createLootables(width, height, 0.008), // Slightly more in industrial areas
     connections
   };
@@ -560,28 +501,6 @@ export const createSouthernRuins = (): GameMap => {
     createBuilding(tiles, building.x, building.y, building.width, building.height, building.type, building.name);
   });
   
-  // Add enemies to southern ruins
-  const southernEnemies = enemies.filter(enemy => enemy.mapId === 'southern_ruins' || !enemy.mapId);
-  const spawnedSouthernEnemies = [];
-  
-  for (let i = 0; i < 10; i++) {
-    const enemyTemplate = southernEnemies[Math.floor(Math.random() * southernEnemies.length)];
-    const enemy = { ...enemyTemplate };
-    
-    let attempts = 0;
-    do {
-      enemy.position = {
-        x: Math.floor(Math.random() * width) * 32 + 16,
-        y: Math.floor(Math.random() * height) * 32 + 16
-      };
-      attempts++;
-    } while (!isValidSpawnPosition(enemy.position, tiles) && attempts < 50);
-    
-    if (attempts < 50) {
-      spawnedSouthernEnemies.push(enemy);
-    }
-  }
-  
   const connections: MapConnection[] = [
     {
       direction: 'north',
@@ -605,7 +524,7 @@ export const createSouthernRuins = (): GameMap => {
     name: 'Southern Ruins',
     bgMusic: 'ruins_ambient',
     npcs: npcs.filter(npc => npc.mapId === 'southern_ruins'),
-    enemies: spawnedSouthernEnemies,
+    enemies: enemies.filter(enemy => enemy.mapId === 'southern_ruins'),
     lootables: createLootables(width, height, 0.006), // Moderate in ruins
     connections
   };
@@ -662,28 +581,6 @@ export const createEasternDistricts = (): GameMap => {
     createPath(tiles, buildingCenterX, buildingCenterY, 30, 30, 'stone');
   });
   
-  // Add enemies to eastern districts
-  const easternEnemies = enemies.filter(enemy => enemy.mapId === 'eastern_districts' || !enemy.mapId);
-  const spawnedEasternEnemies = [];
-  
-  for (let i = 0; i < 5; i++) {
-    const enemyTemplate = easternEnemies[Math.floor(Math.random() * easternEnemies.length)];
-    const enemy = { ...enemyTemplate };
-    
-    let attempts = 0;
-    do {
-      enemy.position = {
-        x: Math.floor(Math.random() * width) * 32 + 16,
-        y: Math.floor(Math.random() * height) * 32 + 16
-      };
-      attempts++;
-    } while (!isValidSpawnPosition(enemy.position, tiles) && attempts < 50);
-    
-    if (attempts < 50) {
-      spawnedEasternEnemies.push(enemy);
-    }
-  }
-  
   const connections: MapConnection[] = [
     {
       direction: 'west',
@@ -707,7 +604,7 @@ export const createEasternDistricts = (): GameMap => {
     name: 'Eastern Districts',
     bgMusic: 'city_ambient',
     npcs: npcs.filter(npc => npc.mapId === 'eastern_districts'),
-    enemies: spawnedEasternEnemies,
+    enemies: enemies.filter(enemy => enemy.mapId === 'eastern_districts'),
     lootables: createLootables(width, height, 0.004), // Rare in developed areas
     connections
   };
@@ -780,28 +677,6 @@ export const createWesternOutskirts = (): GameMap => {
     createPath(tiles, buildingCenterX, buildingCenterY, buildingCenterX, 30, 'dirt');
   });
   
-  // Add enemies to western outskirts
-  const westernEnemies = enemies.filter(enemy => enemy.mapId === 'western_outskirts' || !enemy.mapId);
-  const spawnedWesternEnemies = [];
-  
-  for (let i = 0; i < 7; i++) {
-    const enemyTemplate = westernEnemies[Math.floor(Math.random() * westernEnemies.length)];
-    const enemy = { ...enemyTemplate };
-    
-    let attempts = 0;
-    do {
-      enemy.position = {
-        x: Math.floor(Math.random() * width) * 32 + 16,
-        y: Math.floor(Math.random() * height) * 32 + 16
-      };
-      attempts++;
-    } while (!isValidSpawnPosition(enemy.position, tiles) && attempts < 50);
-    
-    if (attempts < 50) {
-      spawnedWesternEnemies.push(enemy);
-    }
-  }
-  
   const connections: MapConnection[] = [
     {
       direction: 'east',
@@ -825,7 +700,7 @@ export const createWesternOutskirts = (): GameMap => {
     name: 'Western Outskirts',
     bgMusic: 'wilderness_ambient',
     npcs: npcs.filter(npc => npc.mapId === 'western_outskirts'),
-    enemies: spawnedWesternEnemies,
+    enemies: enemies.filter(enemy => enemy.mapId === 'western_outskirts'),
     lootables: createLootables(width, height, 0.002), // Very rare in wilderness
     connections
   };
@@ -1071,28 +946,6 @@ export const createMetroTunnels = (): GameMap => {
     createPath(tiles, buildingCenterX, building.y + building.height, buildingCenterX, 12, 'stone');
   });
   
-  // Add enemies to metro tunnels
-  const metroEnemies = enemies.filter(enemy => enemy.mapId === 'metro_tunnels' || !enemy.mapId);
-  const spawnedMetroEnemies = [];
-  
-  for (let i = 0; i < 12; i++) {
-    const enemyTemplate = metroEnemies[Math.floor(Math.random() * metroEnemies.length)];
-    const enemy = { ...enemyTemplate };
-    
-    let attempts = 0;
-    do {
-      enemy.position = {
-        x: Math.floor(Math.random() * width) * 32 + 16,
-        y: Math.floor(Math.random() * height) * 32 + 16
-      };
-      attempts++;
-    } while (!isValidSpawnPosition(enemy.position, tiles) && attempts < 50);
-    
-    if (attempts < 50) {
-      spawnedMetroEnemies.push(enemy);
-    }
-  }
-  
   const connections: MapConnection[] = [
     {
       direction: 'east',
@@ -1110,7 +963,7 @@ export const createMetroTunnels = (): GameMap => {
     name: 'Metro Tunnels',
     bgMusic: 'underground_ambient',
     npcs: npcs.filter(npc => npc.mapId === 'metro_tunnels'),
-    enemies: spawnedMetroEnemies,
+    enemies: enemies.filter(enemy => enemy.mapId === 'metro_tunnels'),
     lootables: createLootables(width, height, 0.01), // Moderate in abandoned tunnels
     connections
   };

@@ -32,60 +32,6 @@ export const enemies: Enemy[] = [
   },
 
   {
-    id: 'wasteland_raider',
-    name: 'Wasteland Raider',
-    type: 'raider',
-    level: 3,
-    health: 60,
-    maxHealth: 60,
-    energy: 15,
-    maxEnergy: 15,
-    defense: 5,
-    damage: 18,
-    experience: 30,
-    loot: [
-      { item: items.find(i => i.id === 'combat_knife')!, chance: 0.2, quantity: 1 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.5, quantity: 2 },
-      { item: items.find(i => i.id === 'dirty_water')!, chance: 0.3, quantity: 1 },
-      { item: items.find(i => i.id === 'stimpak')!, chance: 0.1, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'wasteland_raider',
-    ai: { type: 'aggressive', range: 7, speed: 64 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'slash')!, skills.find(s => s.id === 'quick_shot')!]
-  },
-
-  {
-    id: 'raider_veteran',
-    name: 'Raider Veteran',
-    type: 'raider',
-    level: 5,
-    health: 85,
-    maxHealth: 85,
-    energy: 20,
-    maxEnergy: 20,
-    defense: 8,
-    damage: 25,
-    experience: 50,
-    loot: [
-      { item: items.find(i => i.id === 'assault_rifle')!, chance: 0.15, quantity: 1 },
-      { item: items.find(i => i.id === 'combat_armor')!, chance: 0.1, quantity: 1 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.7, quantity: 3 },
-      { item: items.find(i => i.id === 'stimpak')!, chance: 0.2, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'raider_veteran',
-    ai: { type: 'aggressive', range: 8, speed: 56 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'power_strike')!, skills.find(s => s.id === 'aimed_shot')!]
-  },
-
-  {
     id: 'super_mutant_brute',
     name: 'Super Mutant Brute',
     type: 'mutant',
@@ -110,242 +56,6 @@ export const enemies: Enemy[] = [
     ai: { type: 'aggressive', range: 8, speed: 48 },
     statusEffects: [],
     skills: [skills.find(s => s.id === 'power_strike')!, skills.find(s => s.id === 'aimed_shot')!]
-  },
-
-  {
-    id: 'super_mutant_master',
-    name: 'Super Mutant Master',
-    type: 'mutant',
-    level: 12,
-    health: 220,
-    maxHealth: 220,
-    energy: 30,
-    maxEnergy: 30,
-    defense: 15,
-    damage: 45,
-    experience: 120,
-    loot: [
-      { item: items.find(i => i.id === 'plasma_rifle')!, chance: 0.15, quantity: 1 },
-      { item: items.find(i => i.id === 'combat_armor')!, chance: 0.2, quantity: 1 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.8, quantity: 4 },
-      { item: items.find(i => i.id === 'electronics')!, chance: 0.4, quantity: 2 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'super_mutant_master',
-    ai: { type: 'aggressive', range: 10, speed: 40 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'power_strike')!, skills.find(s => s.id === 'explosive_shot')!]
-  },
-
-  {
-    id: 'feral_ghoul',
-    name: 'Feral Ghoul',
-    type: 'mutant',
-    level: 4,
-    health: 60,
-    maxHealth: 60,
-    energy: 15,
-    maxEnergy: 15,
-    defense: 2,
-    damage: 20,
-    experience: 35,
-    loot: [
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.3, quantity: 1 },
-      { item: items.find(i => i.id === 'dirty_water')!, chance: 0.4, quantity: 1 },
-      { item: items.find(i => i.id === 'moldy_food')!, chance: 0.3, quantity: 1 },
-      { item: items.find(i => i.id === 'rad_away')!, chance: 0.1, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'feral_ghoul',
-    ai: { type: 'aggressive', range: 5, speed: 80 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'slash')!, skills.find(s => s.id === 'poison_dart')!]
-  },
-
-  {
-    id: 'glowing_one',
-    name: 'Glowing One',
-    type: 'mutant',
-    level: 10,
-    health: 180,
-    maxHealth: 180,
-    energy: 25,
-    maxEnergy: 25,
-    defense: 8,
-    damage: 30,
-    experience: 100,
-    loot: [
-      { item: items.find(i => i.id === 'rad_away')!, chance: 0.6, quantity: 2 },
-      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.2, quantity: 1 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.5, quantity: 3 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'glowing_one',
-    ai: { type: 'aggressive', range: 6, speed: 60 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'poison_dart')!, skills.find(s => s.id === 'adrenaline_shot')!]
-  },
-
-  {
-    id: 'security_robot',
-    name: 'Security Robot',
-    type: 'robot',
-    level: 6,
-    health: 120,
-    maxHealth: 120,
-    energy: 30,
-    maxEnergy: 30,
-    defense: 14,
-    damage: 28,
-    experience: 60,
-    loot: [
-      { item: items.find(i => i.id === 'electronics')!, chance: 0.8, quantity: 3 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.9, quantity: 5 },
-      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.1, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'security_robot',
-    ai: { type: 'patrol', range: 8, speed: 48 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'aimed_shot')!, skills.find(s => s.id === 'emp_blast')!]
-  },
-
-  {
-    id: 'sentry_bot',
-    name: 'Sentry Bot',
-    type: 'robot',
-    level: 15,
-    health: 350,
-    maxHealth: 350,
-    energy: 50,
-    maxEnergy: 50,
-    defense: 25,
-    damage: 60,
-    experience: 200,
-    loot: [
-      { item: items.find(i => i.id === 'electronics')!, chance: 1.0, quantity: 8 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 1.0, quantity: 10 },
-      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.4, quantity: 2 },
-      { item: items.find(i => i.id === 'plasma_rifle')!, chance: 0.1, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'sentry_bot',
-    ai: { type: 'aggressive', range: 12, speed: 32 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'explosive_shot')!, skills.find(s => s.id === 'turret_deploy')!]
-  },
-
-  {
-    id: 'deathclaw',
-    name: 'Deathclaw',
-    type: 'beast',
-    level: 15,
-    health: 300,
-    maxHealth: 300,
-    energy: 40,
-    maxEnergy: 40,
-    defense: 15,
-    damage: 60,
-    experience: 200,
-    loot: [
-      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.25, quantity: 1 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.7, quantity: 4 },
-      { item: items.find(i => i.id === 'electronics')!, chance: 0.4, quantity: 2 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'deathclaw',
-    ai: { type: 'aggressive', range: 12, speed: 96 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'power_strike')!, skills.find(s => s.id === 'slash')!]
-  },
-
-  {
-    id: 'young_deathclaw',
-    name: 'Young Deathclaw',
-    type: 'beast',
-    level: 8,
-    health: 140,
-    maxHealth: 140,
-    energy: 25,
-    maxEnergy: 25,
-    defense: 8,
-    damage: 35,
-    experience: 80,
-    loot: [
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.5, quantity: 2 },
-      { item: items.find(i => i.id === 'stimpak')!, chance: 0.2, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'young_deathclaw',
-    ai: { type: 'aggressive', range: 8, speed: 88 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'slash')!, skills.find(s => s.id === 'quick_shot')!]
-  },
-
-  {
-    id: 'radscorpion',
-    name: 'Radscorpion',
-    type: 'beast',
-    level: 7,
-    health: 110,
-    maxHealth: 110,
-    energy: 20,
-    maxEnergy: 20,
-    defense: 12,
-    damage: 25,
-    experience: 65,
-    loot: [
-      { item: items.find(i => i.id === 'poison_dart')!, chance: 0.3, quantity: 2 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.4, quantity: 2 },
-      { item: items.find(i => i.id === 'rad_away')!, chance: 0.2, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'radscorpion',
-    ai: { type: 'aggressive', range: 6, speed: 56 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'poison_dart')!, skills.find(s => s.id === 'defensive_stance')!]
-  },
-
-  {
-    id: 'giant_radscorpion',
-    name: 'Giant Radscorpion',
-    type: 'beast',
-    level: 12,
-    health: 200,
-    maxHealth: 200,
-    energy: 30,
-    maxEnergy: 30,
-    defense: 18,
-    damage: 40,
-    experience: 120,
-    loot: [
-      { item: items.find(i => i.id === 'poison_dart')!, chance: 0.5, quantity: 4 },
-      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.15, quantity: 1 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.6, quantity: 4 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'giant_radscorpion',
-    ai: { type: 'aggressive', range: 8, speed: 48 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'poison_dart')!, skills.find(s => s.id === 'power_strike')!]
   },
 
   {
@@ -376,33 +86,301 @@ export const enemies: Enemy[] = [
   },
 
   {
-    id: 'enclave_officer',
-    name: 'Enclave Officer',
-    type: 'robot',
-    level: 16,
-    health: 280,
-    maxHealth: 280,
-    energy: 45,
-    maxEnergy: 45,
-    defense: 22,
-    damage: 55,
-    experience: 180,
+    id: 'feral_ghoul',
+    name: 'Feral Ghoul',
+    type: 'mutant',
+    level: 4,
+    health: 60,
+    maxHealth: 60,
+    energy: 15,
+    maxEnergy: 15,
+    defense: 2,
+    damage: 20,
+    experience: 35,
     loot: [
-      { item: items.find(i => i.id === 'plasma_rifle')!, chance: 0.3, quantity: 1 },
-      { item: items.find(i => i.id === 'power_armor')!, chance: 0.1, quantity: 1 },
-      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.4, quantity: 2 },
-      { item: items.find(i => i.id === 'electronics')!, chance: 0.8, quantity: 4 }
+      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.3, quantity: 1 },
+      { item: items.find(i => i.id === 'dirty_water')!, chance: 0.4, quantity: 1 },
+      { item: items.find(i => i.id === 'moldy_food')!, chance: 0.3, quantity: 1 },
+      { item: items.find(i => i.id === 'rad_away')!, chance: 0.1, quantity: 1 }
     ],
     position: { x: 0, y: 0 },
     direction: 'down',
     isMoving: false,
-    sprite: 'enclave_officer',
-    ai: { type: 'aggressive', range: 12, speed: 56 },
+    sprite: 'feral_ghoul',
+    ai: { type: 'aggressive', range: 5, speed: 80 },
     statusEffects: [],
-    skills: [skills.find(s => s.id === 'explosive_shot')!, skills.find(s => s.id === 'adrenaline_shot')!]
+    skills: [skills.find(s => s.id === 'slash')!, skills.find(s => s.id === 'poison_dart')!]
   },
 
-  // BROTHERHOOD ENEMIES
+  {
+    id: 'deathclaw',
+    name: 'Deathclaw',
+    type: 'beast',
+    level: 15,
+    health: 300,
+    maxHealth: 300,
+    energy: 40,
+    maxEnergy: 40,
+    defense: 15,
+    damage: 60,
+    experience: 200,
+    loot: [
+      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.25, quantity: 1 },
+      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.7, quantity: 4 },
+      { item: items.find(i => i.id === 'electronics')!, chance: 0.4, quantity: 2 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'deathclaw',
+    ai: { type: 'aggressive', range: 12, speed: 96 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'power_strike')!, skills.find(s => s.id === 'slash')!]
+  },
+
+  // THE PITT ENEMIES
+  {
+    id: 'trog',
+    name: 'Trog',
+    type: 'mutant',
+    mapId: 'northern_wasteland',
+    level: 6,
+    health: 80,
+    maxHealth: 80,
+    energy: 18,
+    maxEnergy: 18,
+    defense: 5,
+    damage: 25,
+    experience: 45,
+    loot: [
+      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.8, quantity: 3 },
+      { item: items.find(i => i.id === 'electronics')!, chance: 0.3, quantity: 1 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'trog',
+    ai: { type: 'aggressive', range: 6, speed: 88 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'slash')!, skills.find(s => s.id === 'poison_dart')!]
+  },
+
+  {
+    id: 'pitt_raider',
+    name: 'Pitt Raider',
+    type: 'raider',
+    mapId: 'northern_wasteland',
+    level: 7,
+    health: 90,
+    maxHealth: 90,
+    energy: 20,
+    maxEnergy: 20,
+    defense: 8,
+    damage: 28,
+    experience: 55,
+    loot: [
+      { item: items.find(i => i.id === 'combat_armor')!, chance: 0.4, quantity: 1 },
+      { item: items.find(i => i.id === 'assault_rifle')!, chance: 0.3, quantity: 1 },
+      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.9, quantity: 4 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'pitt_raider',
+    ai: { type: 'aggressive', range: 7, speed: 64 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'aimed_shot')!, skills.find(s => s.id === 'power_strike')!]
+  },
+
+  {
+    id: 'wildman',
+    name: 'Wildman',
+    type: 'mutant',
+    mapId: 'northern_wasteland',
+    level: 9,
+    health: 120,
+    maxHealth: 120,
+    energy: 25,
+    maxEnergy: 25,
+    defense: 6,
+    damage: 32,
+    experience: 70,
+    loot: [
+      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.7, quantity: 3 },
+      { item: items.find(i => i.id === 'stimpak')!, chance: 0.5, quantity: 2 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'wildman',
+    ai: { type: 'aggressive', range: 8, speed: 76 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'slash')!, skills.find(s => s.id === 'adrenaline_shot')!]
+  },
+
+  // POINT LOOKOUT ENEMIES
+  {
+    id: 'swampfolk',
+    name: 'Swampfolk',
+    type: 'mutant',
+    mapId: 'southern_ruins',
+    level: 10,
+    health: 140,
+    maxHealth: 140,
+    energy: 28,
+    maxEnergy: 28,
+    defense: 10,
+    damage: 38,
+    experience: 85,
+    loot: [
+      { item: items.find(i => i.id === 'combat_knife')!, chance: 0.6, quantity: 1 },
+      { item: items.find(i => i.id === 'stimpak')!, chance: 0.4, quantity: 2 },
+      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.5, quantity: 2 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'swampfolk',
+    ai: { type: 'aggressive', range: 9, speed: 56 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'poison_dart')!, skills.find(s => s.id === 'slash')!]
+  },
+
+  {
+    id: 'mirelurk',
+    name: 'Mirelurk',
+    type: 'beast',
+    mapId: 'southern_ruins',
+    level: 8,
+    health: 110,
+    maxHealth: 110,
+    energy: 22,
+    maxEnergy: 22,
+    defense: 15,
+    damage: 30,
+    experience: 60,
+    loot: [
+      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.8, quantity: 4 },
+      { item: items.find(i => i.id === 'rad_away')!, chance: 0.3, quantity: 1 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'mirelurk',
+    ai: { type: 'defensive', range: 6, speed: 40 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'defensive_stance')!, skills.find(s => s.id === 'slash')!]
+  },
+
+  {
+    id: 'tribal_warrior',
+    name: 'Tribal Warrior',
+    type: 'raider',
+    mapId: 'southern_ruins',
+    level: 11,
+    health: 130,
+    maxHealth: 130,
+    energy: 30,
+    maxEnergy: 30,
+    defense: 8,
+    damage: 35,
+    experience: 90,
+    loot: [
+      { item: items.find(i => i.id === 'combat_knife')!, chance: 0.7, quantity: 1 },
+      { item: items.find(i => i.id === 'stimpak')!, chance: 0.6, quantity: 2 },
+      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.2, quantity: 1 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'tribal_warrior',
+    ai: { type: 'aggressive', range: 8, speed: 72 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'aimed_shot')!, skills.find(s => s.id === 'poison_dart')!]
+  },
+
+  // MOTHERSHIP ZETA ENEMIES
+  {
+    id: 'alien_worker',
+    name: 'Alien Worker',
+    type: 'robot',
+    mapId: 'eastern_districts',
+    level: 12,
+    health: 100,
+    maxHealth: 100,
+    energy: 40,
+    maxEnergy: 40,
+    defense: 12,
+    damage: 40,
+    experience: 100,
+    loot: [
+      { item: items.find(i => i.id === 'electronics')!, chance: 0.9, quantity: 5 },
+      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.6, quantity: 2 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'alien_worker',
+    ai: { type: 'defensive', range: 8, speed: 60 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'emp_blast')!, skills.find(s => s.id === 'shock_trap')!]
+  },
+
+  {
+    id: 'alien_soldier',
+    name: 'Alien Soldier',
+    type: 'robot',
+    mapId: 'eastern_districts',
+    level: 15,
+    health: 180,
+    maxHealth: 180,
+    energy: 50,
+    maxEnergy: 50,
+    defense: 20,
+    damage: 55,
+    experience: 150,
+    loot: [
+      { item: items.find(i => i.id === 'plasma_rifle')!, chance: 0.8, quantity: 1 },
+      { item: items.find(i => i.id === 'electronics')!, chance: 1.0, quantity: 8 },
+      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.7, quantity: 3 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'alien_soldier',
+    ai: { type: 'aggressive', range: 12, speed: 80 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'explosive_shot')!, skills.find(s => s.id === 'emp_blast')!]
+  },
+
+  {
+    id: 'alien_captain',
+    name: 'Alien Captain',
+    type: 'boss',
+    mapId: 'eastern_districts',
+    level: 20,
+    health: 400,
+    maxHealth: 400,
+    energy: 80,
+    maxEnergy: 80,
+    defense: 25,
+    damage: 70,
+    experience: 300,
+    loot: [
+      { item: items.find(i => i.id === 'power_armor')!, chance: 1.0, quantity: 1 },
+      { item: items.find(i => i.id === 'plasma_rifle')!, chance: 1.0, quantity: 1 },
+      { item: items.find(i => i.id === 'rare_earth')!, chance: 1.0, quantity: 10 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'alien_captain',
+    ai: { type: 'aggressive', range: 15, speed: 64 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'explosive_shot')!, skills.find(s => s.id === 'turret_deploy')!, skills.find(s => s.id === 'emp_blast')!]
+  },
+
+  // CITADEL ENEMIES
   {
     id: 'brotherhood_outcast',
     name: 'Brotherhood Outcast',
@@ -430,7 +408,34 @@ export const enemies: Enemy[] = [
     skills: [skills.find(s => s.id === 'aimed_shot')!, skills.find(s => s.id === 'defensive_stance')!]
   },
 
-  // METRO TUNNEL ENEMIES
+  {
+    id: 'super_mutant_master',
+    name: 'Super Mutant Master',
+    type: 'boss',
+    mapId: 'western_outskirts',
+    level: 18,
+    health: 500,
+    maxHealth: 500,
+    energy: 60,
+    maxEnergy: 60,
+    defense: 20,
+    damage: 80,
+    experience: 400,
+    loot: [
+      { item: items.find(i => i.id === 'power_armor')!, chance: 0.8, quantity: 1 },
+      { item: items.find(i => i.id === 'plasma_rifle')!, chance: 1.0, quantity: 1 },
+      { item: items.find(i => i.id === 'rare_earth')!, chance: 1.0, quantity: 8 }
+    ],
+    position: { x: 0, y: 0 },
+    direction: 'down',
+    isMoving: false,
+    sprite: 'super_mutant_master',
+    ai: { type: 'aggressive', range: 12, speed: 48 },
+    statusEffects: [],
+    skills: [skills.find(s => s.id === 'power_strike')!, skills.find(s => s.id === 'explosive_shot')!, skills.find(s => s.id === 'adrenaline_shot')!]
+  },
+
+  // METRO TUNNELS ENEMIES
   {
     id: 'tunnel_rat',
     name: 'Giant Tunnel Rat',
@@ -507,162 +512,5 @@ export const enemies: Enemy[] = [
     ai: { type: 'patrol', range: 8, speed: 48 },
     statusEffects: [],
     skills: [skills.find(s => s.id === 'aimed_shot')!, skills.find(s => s.id === 'emp_blast')!]
-  },
-
-  // WASTELAND CREATURES
-  {
-    id: 'mole_rat',
-    name: 'Mole Rat',
-    type: 'beast',
-    level: 2,
-    health: 35,
-    maxHealth: 35,
-    energy: 12,
-    maxEnergy: 12,
-    defense: 1,
-    damage: 12,
-    experience: 15,
-    loot: [
-      { item: items.find(i => i.id === 'moldy_food')!, chance: 0.4, quantity: 1 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.2, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'mole_rat',
-    ai: { type: 'aggressive', range: 3, speed: 80 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'slash')!]
-  },
-
-  {
-    id: 'giant_mole_rat',
-    name: 'Giant Mole Rat',
-    type: 'beast',
-    level: 6,
-    health: 90,
-    maxHealth: 90,
-    energy: 18,
-    maxEnergy: 18,
-    defense: 5,
-    damage: 22,
-    experience: 50,
-    loot: [
-      { item: items.find(i => i.id === 'moldy_food')!, chance: 0.6, quantity: 2 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.4, quantity: 2 },
-      { item: items.find(i => i.id === 'stimpak')!, chance: 0.1, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'giant_mole_rat',
-    ai: { type: 'aggressive', range: 5, speed: 64 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'slash')!, skills.find(s => s.id === 'power_strike')!]
-  },
-
-  {
-    id: 'bloatfly',
-    name: 'Bloatfly',
-    type: 'beast',
-    level: 4,
-    health: 50,
-    maxHealth: 50,
-    energy: 20,
-    maxEnergy: 20,
-    defense: 3,
-    damage: 15,
-    experience: 30,
-    loot: [
-      { item: items.find(i => i.id === 'poison_dart')!, chance: 0.3, quantity: 1 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 0.3, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'bloatfly',
-    ai: { type: 'aggressive', range: 6, speed: 72 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'poison_dart')!]
-  },
-
-  {
-    id: 'cazador',
-    name: 'Cazador',
-    type: 'beast',
-    level: 9,
-    health: 120,
-    maxHealth: 120,
-    energy: 25,
-    maxEnergy: 25,
-    defense: 6,
-    damage: 32,
-    experience: 85,
-    loot: [
-      { item: items.find(i => i.id === 'poison_dart')!, chance: 0.6, quantity: 3 },
-      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.1, quantity: 1 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'cazador',
-    ai: { type: 'aggressive', range: 8, speed: 88 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'poison_dart')!, skills.find(s => s.id === 'quick_shot')!]
-  },
-
-  // BOSS ENEMIES
-  {
-    id: 'raider_boss',
-    name: 'Raider Chief',
-    type: 'boss',
-    level: 10,
-    health: 250,
-    maxHealth: 250,
-    energy: 40,
-    maxEnergy: 40,
-    defense: 15,
-    damage: 50,
-    experience: 150,
-    loot: [
-      { item: items.find(i => i.id === 'power_armor')!, chance: 0.2, quantity: 1 },
-      { item: items.find(i => i.id === 'plasma_rifle')!, chance: 0.3, quantity: 1 },
-      { item: items.find(i => i.id === 'rare_earth')!, chance: 0.5, quantity: 3 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 1.0, quantity: 8 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'raider_boss',
-    ai: { type: 'aggressive', range: 12, speed: 48 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'power_strike')!, skills.find(s => s.id === 'explosive_shot')!, skills.find(s => s.id === 'adrenaline_shot')!]
-  },
-
-  {
-    id: 'super_mutant_behemoth',
-    name: 'Super Mutant Behemoth',
-    type: 'boss',
-    level: 20,
-    health: 500,
-    maxHealth: 500,
-    energy: 60,
-    maxEnergy: 60,
-    defense: 30,
-    damage: 80,
-    experience: 400,
-    loot: [
-      { item: items.find(i => i.id === 'power_armor')!, chance: 0.5, quantity: 1 },
-      { item: items.find(i => i.id === 'rare_earth')!, chance: 1.0, quantity: 10 },
-      { item: items.find(i => i.id === 'electronics')!, chance: 0.8, quantity: 8 },
-      { item: items.find(i => i.id === 'scrap_metal')!, chance: 1.0, quantity: 15 }
-    ],
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'super_mutant_behemoth',
-    ai: { type: 'aggressive', range: 15, speed: 32 },
-    statusEffects: [],
-    skills: [skills.find(s => s.id === 'power_strike')!, skills.find(s => s.id === 'explosive_shot')!, skills.find(s => s.id === 'turret_deploy')!]
   }
 ];
