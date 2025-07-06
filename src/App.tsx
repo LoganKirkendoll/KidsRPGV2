@@ -567,7 +567,8 @@ function App() {
       return (
         <div className="relative">
           {/* Game HUD */}
-          <GameHUD
+          <div className="pointer-events-none">
+            <GameHUD
             player={gameState.player}
             gold={gameState.gold}
             gameTime={gameState.gameTime}
@@ -601,6 +602,7 @@ function App() {
             onSave={() => saveGame(1)}
             onMenu={returnToMenu}
           />
+          </div>
           
           <GameCanvas
             gameState={gameState}

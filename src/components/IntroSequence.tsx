@@ -72,7 +72,7 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
   const handleSkip = () => {
     if (canSkip) {
       onComplete();
-      // Prevent multiple clicks
+      // Prevent multiple clicks by disabling the button
       setCanSkip(false);
     }
   };

@@ -42,9 +42,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameState, settings, onGameStat
 
   useEffect(() => {
     if (engineRef.current) {
-      engineRef.current.setGameState(gameState);
+      // Only update the game state when it changes significantly
+      // This prevents constant re-rendering that could cause UI duplication
+      const currentState = engineRef.current.getGameState();
+      if (gameState.currentMap.id !== currentState.currentMap.id ||
+          gameState.gameMode !== currentState.gameMode ||
+          gameState.player.position.x !== currentState.player.position.x ||
+          gameState.player.position.y !== currentState.player.position.y) {
+        engineRef.current.setGameState(gameState);
+      }
     }
-  }, []); // Remove gameState dependency to prevent constant re-renders
+  }, [gameState.currentMap.id, gameState.gameMode, gameState.player.position.x, gameState.player.position.y]);
 
   // Expose engine to parent component
   useEffect(() => {

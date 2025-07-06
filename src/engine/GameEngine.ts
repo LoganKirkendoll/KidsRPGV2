@@ -1160,52 +1160,74 @@ export class GameEngine {
   }
   
   private renderInteriorTile(tile: Tile, x: number, y: number) {
-    // Interior-specific rendering
+    // Interior-specific rendering with better visibility
     let baseColor = '#8B4513'; // Wood floor default
     
     if (tile.type === 'building' || !tile.walkable) {
+      // Wall
       baseColor = '#5D4037'; // Dark wood for walls
-    } else if (tile.type === 'stone') {
-      baseColor = '#9E9E9E'; // Stone floor
-    } else if (tile.type === 'water') {
-      baseColor = '#2196F3'; // Water
-    }
-    
-    // Fill with base color
-    this.ctx.fillStyle = baseColor;
-    this.ctx.fillRect(x, y, 32, 32);
-    
-    // Add texture details for interior
-    if (!this.settings.lowGraphicsMode) {
-      this.ctx.save();
-      this.ctx.globalAlpha = 0.3;
       
-      if (tile.type === 'building' || !tile.walkable) {
-        // Wall texture
-        this.ctx.fillStyle = '#3E2723';
-        for (let i = 0; i < 3; i++) {
-          const lineY = y + (i * 10) + 5;
-          this.ctx.fillRect(x + 2, lineY, 28, 2);
-        }
-      } else {
-        // Floor texture
-        this.ctx.fillStyle = '#5D4037';
+      // Draw wall with 3D effect
+      this.ctx.fillStyle = baseColor;
+      this.ctx.fillRect(x, y, 32, 32);
+      
+      // Top highlight
+      this.ctx.fillStyle = this.lightenColor(baseColor, 1.2);
+      this.ctx.fillRect(x, y, 32, 5);
+      
+      // Left highlight
+      this.ctx.fillStyle = this.lightenColor(baseColor, 1.1);
+      this.ctx.fillRect(x, y, 5, 32);
+      
+      // Bottom shadow
+      this.ctx.fillStyle = this.darkenColor(baseColor, 0.8);
+      this.ctx.fillRect(x, y + 27, 32, 5);
+      
+      // Right shadow
+      this.ctx.fillStyle = this.darkenColor(baseColor, 0.9);
+      this.ctx.fillRect(x + 27, y, 5, 32);
+    } else if (tile.isEntrance || tile.isExit) {
+      // Door/entrance
+      this.ctx.fillStyle = '#A1887F'; // Light wood for doors
+      this.ctx.fillRect(x, y, 32, 32);
+      
+      // Door frame
+      this.ctx.strokeStyle = '#3E2723';
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(x + 2, y + 2, 28, 28);
+      
+      // Door handle
+      this.ctx.fillStyle = '#FFC107';
+      this.ctx.fillRect(x + 22, y + 16, 4, 4);
+      
+      // Special marker for entrance/exit
+      this.ctx.fillStyle = tile.isEntrance ? '#4CAF50' : '#F44336';
+      this.ctx.beginPath();
+      this.ctx.arc(x + 16, y + 8, 4, 0, Math.PI * 2);
+      this.ctx.fill();
+    } else {
+      // Floor
+      this.ctx.fillStyle = baseColor;
+      this.ctx.fillRect(x, y, 32, 32);
+      
+      // Wood grain texture
+      if (!this.settings.lowGraphicsMode) {
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.3;
+        this.ctx.strokeStyle = this.darkenColor(baseColor, 0.7);
+        this.ctx.lineWidth = 1;
+        
+        // Horizontal grain lines
         for (let i = 0; i < 4; i++) {
-          const lineX = x + (i * 8);
-          this.ctx.fillRect(lineX, y, 2, 32);
+          const yPos = y + 8 * i + 4;
+          this.ctx.beginPath();
+          this.ctx.moveTo(x, yPos);
+          this.ctx.lineTo(x + 32, yPos);
+          this.ctx.stroke();
         }
+        
+        this.ctx.restore();
       }
-      
-      // Special markings for entrances/exits
-      if (tile.isEntrance || tile.isExit) {
-        this.ctx.globalAlpha = 0.8;
-        this.ctx.fillStyle = '#FFC107';
-        this.ctx.fillRect(x + 8, y + 8, 16, 16);
-        this.ctx.fillStyle = '#000000';
-        this.ctx.fillText(tile.isEntrance ? "IN" : "OUT", x + 16, y + 20);
-      }
-      
-      this.ctx.restore();
     }
   }
 
@@ -1564,10 +1586,11 @@ export class GameEngine {
   }
 
   private lightenColor(color: string, factor: number): string {
+    // Simple color lightening
     const hex = color.replace('#', '');
-    const r = Math.min(255, parseInt(hex.substr(0, 2), 16) + Math.floor(255 * factor));
-    const g = Math.min(255, parseInt(hex.substr(2, 2), 16) + Math.floor(255 * factor));
-    const b = Math.min(255, parseInt(hex.substr(4, 2), 16) + Math.floor(255 * factor));
+    const r = Math.min(255, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
+    const g = Math.min(255, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
+    const b = Math.min(255, Math.floor(parseInt(hex.substr(4, 2), 16) * factor));
     return `rgb(${r}, ${g}, ${b})`;
   }
 
