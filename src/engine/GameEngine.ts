@@ -487,27 +487,28 @@ export class GameEngine {
 
     const mapEdgeThreshold = 64; // Increased threshold for easier transitions
     
-    // Check if player is near map edge
-    const nearNorthEdge = y < mapEdgeThreshold;
-    const nearSouthEdge = y > (this.gameState.currentMap.height - 1) * 32 - mapEdgeThreshold;
-    const nearWestEdge = x < mapEdgeThreshold;
-    const nearEastEdge = x > (this.gameState.currentMap.width - 1) * 32 - mapEdgeThreshold;
+    // Check if player has crossed map boundaries
+    const crossedNorth = y < 0;
+    const crossedSouth = y >= this.gameState.currentMap.height * 32;
+    const crossedWest = x < 0;
+    const crossedEast = x >= this.gameState.currentMap.width * 32;
     
-    if (nearNorthEdge || nearSouthEdge || nearWestEdge || nearEastEdge) {
+    let direction: string | null = null;
+    
+    if (crossedNorth) direction = 'north';
+    else if (crossedSouth) direction = 'south';
+    else if (crossedWest) direction = 'west';
+    else if (crossedEast) direction = 'east';
+    
+    if (!direction) return;
       
-      // Find appropriate connection
-      const connection = this.gameState.currentMap.connections.find(conn => {
-        // Check which edge the player is near and match with connection direction
-        if (nearNorthEdge && conn.direction === 'north') return true;
-        if (nearSouthEdge && conn.direction === 'south') return true;
-        if (nearWestEdge && conn.direction === 'west') return true;
-        if (nearEastEdge && conn.direction === 'east') return true;
-        return false;
-      });
-      
-      if (connection) {
-        this.transitionToMap(connection.targetMapId, connection.toPosition);
-      }
+    // Find appropriate connection
+    const connection = this.gameState.currentMap.connections.find(conn => {
+      return conn.direction === direction;
+    });
+    
+    if (connection) {
+      this.transitionToMap(connection.targetMapId, connection.toPosition);
     }
   }
 
