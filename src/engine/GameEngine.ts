@@ -821,21 +821,23 @@ export class GameEngine {
 
     for (let y = Math.max(0, startY); y < Math.min(this.gameState.currentMap.height, endY); y++) {
       for (let x = Math.max(0, startX); x < Math.min(this.gameState.currentMap.width, endX); x++) {
-        const tile = this.gameState.currentMap.tiles[y][x];
-        
-        if (!tile.discovered && !this.settings.lowGraphicsMode) continue;
-        
-        const tileX = x * 32;
-        const tileY = y * 32;
-        
-        // Enhanced tile rendering with textures and details
-        this.renderEnhancedTile(tile, tileX, tileY);
-        
-        // Add tile borders for better definition
-        if (!this.settings.lowGraphicsMode) {
-          this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-          this.ctx.lineWidth = 0.5;
-          this.ctx.strokeRect(tileX, tileY, 32, 32);
+        if (this.gameState.currentMap.tiles[y] && this.gameState.currentMap.tiles[y][x]) {
+          const tile = this.gameState.currentMap.tiles[y][x];
+          
+          if (!tile.discovered && !this.settings.lowGraphicsMode) continue;
+          
+          const tileX = x * 32;
+          const tileY = y * 32;
+          
+          // Enhanced tile rendering with textures and details
+          this.renderEnhancedTile(tile, tileX, tileY);
+          
+          // Add tile borders for better definition
+          if (!this.settings.lowGraphicsMode) {
+            this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+            this.ctx.lineWidth = 0.5;
+            this.ctx.strokeRect(tileX, tileY, 32, 32);
+          }
         }
       }
     }
@@ -1001,25 +1003,31 @@ export class GameEngine {
 
   private renderEntities() {
     // Render lootables
-    this.gameState.currentMap.lootables.forEach(lootable => {
-      if (this.isInViewport(lootable.position) && !lootable.looted) {
-        this.renderLootable(lootable);
-      }
-    });
+    if (this.gameState.currentMap.lootables) {
+      this.gameState.currentMap.lootables.forEach(lootable => {
+        if (this.isInViewport(lootable.position) && !lootable.looted) {
+          this.renderLootable(lootable);
+        }
+      });
+    }
 
     // Render NPCs
-    this.gameState.currentMap.npcs.forEach(npc => {
-      if (this.isInViewport(npc.position)) {
-        this.renderNPC(npc);
-      }
-    });
+    if (this.gameState.currentMap.npcs) {
+      this.gameState.currentMap.npcs.forEach(npc => {
+        if (this.isInViewport(npc.position)) {
+          this.renderNPC(npc);
+        }
+      });
+    }
 
     // Render enemies
-    this.gameState.currentMap.enemies.forEach(enemy => {
-      if (this.isInViewport(enemy.position)) {
-        this.renderEnemy(enemy);
-      }
-    });
+    if (this.gameState.currentMap.enemies) {
+      this.gameState.currentMap.enemies.forEach(enemy => {
+        if (this.isInViewport(enemy.position)) {
+          this.renderEnemy(enemy);
+        }
+      });
+    }
 
     // Render party members
     this.gameState.party.forEach(character => {
@@ -1568,16 +1576,8 @@ export class GameEngine {
   }
 
   public setGameState(newState: GameState) {
-    this.gameState = { ...newState };
-    
-    // Update camera to follow player
-    this.gameState.camera.x = this.gameState.player.position.x - this.canvas.width / 2;
-    this.gameState.camera.y = this.gameState.player.position.y - this.canvas.height / 2;
-    
-    // Ensure visibility map exists
-    if (!this.gameState.visibilityMap || this.gameState.visibilityMap.length === 0) {
-      this.initializeVisibilityMap();
-    }
+    this.gameState = newState;
+    this.initializeVisibilityMap();
   }
 
   public getGameState(): GameState {
