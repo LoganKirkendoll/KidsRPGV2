@@ -425,17 +425,25 @@ function App() {
   };
 
   const handleStartNewGame = () => {
-    setShowIntro(true);
-  };
-
-  const handleIntroComplete = () => {
-    setShowIntro(false);
     setGameMode('character-creation');
   };
 
+  const handleCharacterCreated = (characterData: any) => {
+    setShowIntro(true);
+    // Store character data for after intro
+    setSelectedCharacterData(characterData);
+  };
+
+  const handleIntroComplete = (characterData: any) => {
+    setShowIntro(false);
+    createNewGame(characterData.name, characterData.class, characterData);
+  };
+
+  const [selectedCharacterData, setSelectedCharacterData] = useState<any>(null);
+
   // Show intro screen
   if (showIntro) {
-    return <IntroScreen onComplete={handleIntroComplete} />;
+    return <IntroScreen characterData={selectedCharacterData} onComplete={handleIntroComplete} />;
   }
 
   switch (gameMode) {
@@ -454,7 +462,7 @@ function App() {
     case 'character-creation':
       return (
         <CharacterCreation
-          onCreateCharacter={(characterData) => createNewGame(characterData.name, characterData.class)}
+          onCreateCharacter={handleCharacterCreated}
           onBack={returnToMenu}
         />
       );

@@ -27,8 +27,33 @@ export const useGameState = () => {
     setGameState(newState);
   }, []);
 
-  const createNewGame = useCallback((playerName: string, characterClass: any) => {
+  const createNewGame = useCallback((playerName: string, characterClass: any, characterData?: any) => {
     const player = createStartingCharacter(playerName, characterClass);
+    
+    // Apply character data if provided
+    if (characterData) {
+      player.background = characterData.background;
+      player.age = characterData.age;
+      player.gender = characterData.gender;
+      player.biography = characterData.biography;
+      player.traits = characterData.traits;
+      
+      // Apply background bonuses
+      const background = backgrounds.find(b => b.id === characterData.background);
+      if (background) {
+        Object.entries(background.bonuses).forEach(([stat, bonus]) => {
+          if (stat in player.stats) {
+            player.stats[stat as keyof typeof player.stats] += bonus;
+          }
+        });
+        Object.entries(background.penalties).forEach(([stat, penalty]) => {
+          if (stat in player.stats) {
+            player.stats[stat as keyof typeof player.stats] += penalty;
+          }
+        });
+      }
+    }
+    
     // Only create the starting map initially
     const startingMap = maps['capital_wasteland']();
     

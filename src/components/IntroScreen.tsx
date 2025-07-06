@@ -2,44 +2,127 @@ import React, { useState, useEffect } from 'react';
 import { Play, SkipForward } from 'lucide-react';
 
 interface IntroScreenProps {
+  characterData: any;
   onComplete: () => void;
 }
 
-const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
+const IntroScreen: React.FC<IntroScreenProps> = ({ characterData, onComplete }) => {
   const [currentScene, setCurrentScene] = useState(0);
   const [showText, setShowText] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
 
-  const scenes = [
-    {
-      background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-      title: "October 23, 2077",
-      subtitle: "The Great War",
-      text: "The world ended not with a whimper, but with the roar of atomic fire...",
-      duration: 4000
-    },
-    {
-      background: 'linear-gradient(135deg, #ff6b35 0%, #f7931e 50%, #ffcc02 100%)',
-      title: "200 Years Later",
-      subtitle: "The Capital Wasteland",
-      text: "From the ashes of the old world, survivors emerge into a harsh new reality...",
-      duration: 4000
-    },
-    {
-      background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #7f8c8d 100%)',
-      title: "Vault 101",
-      subtitle: "Your Story Begins",
-      text: "Born in the safety of an underground vault, you've never seen the surface world...",
-      duration: 4000
-    },
-    {
-      background: 'linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #cd853f 100%)',
-      title: "Until Now",
-      subtitle: "The Wasteland Awaits",
-      text: "Your father has left the vault, breaking the most sacred rule. Now you must follow...",
-      duration: 4000
+  // Generate scenes based on character background
+  const getBackgroundScenes = (background: string) => {
+    const baseScenes = [
+      {
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+        title: "October 23, 2077",
+        subtitle: "The Great War",
+        text: "The world ended not with a whimper, but with the roar of atomic fire...",
+        duration: 4000
+      },
+      {
+        background: 'linear-gradient(135deg, #ff6b35 0%, #f7931e 50%, #ffcc02 100%)',
+        title: "200 Years Later",
+        subtitle: "The Capital Wasteland",
+        text: "From the ashes of the old world, survivors emerge into a harsh new reality...",
+        duration: 4000
+      }
+    ];
+
+    // Add background-specific scenes
+    switch (background) {
+      case 'vault_dweller':
+        return [
+          ...baseScenes,
+          {
+            background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #7f8c8d 100%)',
+            title: "Vault 101",
+            subtitle: "Your Story Begins",
+            text: "Born in the safety of an underground vault, you've never seen the surface world...",
+            duration: 4000
+          },
+          {
+            background: 'linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #cd853f 100%)',
+            title: "Until Now",
+            subtitle: "The Wasteland Awaits",
+            text: "Your father has left the vault, breaking the most sacred rule. Now you must follow...",
+            duration: 4000
+          }
+        ];
+      
+      case 'wasteland_wanderer':
+        return [
+          ...baseScenes,
+          {
+            background: 'linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #cd853f 100%)',
+            title: "Born in the Wastes",
+            subtitle: "A Harsh Beginning",
+            text: "You've known nothing but the harsh reality of the wasteland your entire life...",
+            duration: 4000
+          },
+          {
+            background: 'linear-gradient(135deg, #654321 0%, #8b4513 50%, #a0522d 100%)',
+            title: "Survival",
+            subtitle: "Your Greatest Skill",
+            text: "Where others see only death and destruction, you see opportunity and hope...",
+            duration: 4000
+          }
+        ];
+      
+      case 'tribal':
+        return [
+          ...baseScenes,
+          {
+            background: 'linear-gradient(135deg, #228b22 0%, #32cd32 50%, #90ee90 100%)',
+            title: "The Tribe",
+            subtitle: "Ancient Ways",
+            text: "Your people have maintained the old ways, living in harmony with the changed world...",
+            duration: 4000
+          },
+          {
+            background: 'linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #cd853f 100%)',
+            title: "The Journey",
+            subtitle: "Beyond Sacred Lands",
+            text: "Now you must venture beyond your tribal lands into the unknown wasteland...",
+            duration: 4000
+          }
+        ];
+      
+      case 'raider':
+        return [
+          ...baseScenes,
+          {
+            background: 'linear-gradient(135deg, #8b0000 0%, #dc143c 50%, #ff6347 100%)',
+            title: "The Raider Life",
+            subtitle: "Violence and Chaos",
+            text: "You once lived by the gun, taking what you needed from the weak...",
+            duration: 4000
+          },
+          {
+            background: 'linear-gradient(135deg, #2f4f4f 0%, #696969 50%, #a9a9a9 100%)',
+            title: "Redemption",
+            subtitle: "A New Path",
+            text: "But now you seek a different way, hoping to atone for your past sins...",
+            duration: 4000
+          }
+        ];
+      
+      default:
+        return [
+          ...baseScenes,
+          {
+            background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #7f8c8d 100%)',
+            title: "Your Story",
+            subtitle: "Begins Now",
+            text: "Whatever your past, the wasteland offers both danger and opportunity...",
+            duration: 4000
+          }
+        ];
     }
-  ];
+  };
+
+  const scenes = getBackgroundScenes(characterData?.background || 'vault_dweller');
 
   useEffect(() => {
     setCanSkip(true);
@@ -55,7 +138,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
           setCurrentScene(currentScene + 1);
         }, 500);
       } else {
-        setTimeout(onComplete, 2000);
+        setTimeout(() => onComplete(characterData), 2000);
       }
     }, scenes[currentScene].duration);
 
@@ -66,7 +149,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
   }, [currentScene, onComplete]);
 
   const handleSkip = () => {
-    onComplete();
+    onComplete(characterData);
   };
 
   return (
