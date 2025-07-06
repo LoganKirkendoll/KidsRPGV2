@@ -15,6 +15,7 @@ export class GameEngine {
   private edgeTimer = 0;
   private currentEdgeDirection: string | null = null;
   private isAtEdge = false;
+  private edgeDirection: string | null = null;
   private readonly EDGE_THRESHOLD = 64; // 2 tiles from edge
   private readonly TRANSITION_DELAY = 2000; // 2 seconds
   
@@ -489,27 +490,47 @@ export class GameEngine {
   }
 
   private checkMapTransitions(x: number, y: number) {
-    if (this.gameState.currentMap.isInterior) return;
+    if (!this.gameState.currentMap.connections || this.gameState.currentMap.connections.length === 0) return;
 
-    const mapEdgeThreshold = 64; // Increased threshold for easier transitions
-    
-    // Check if player is near map edge
-    const nearNorthEdge = y < mapEdgeThreshold;
-    const nearSouthEdge = y > (this.gameState.currentMap.height - 1) * 32 - mapEdgeThreshold;
-    const nearWestEdge = x < mapEdgeThreshold;
-    const nearEastEdge = x > (this.gameState.currentMap.width - 1) * 32 - mapEdgeThreshold;
-    
-    if (nearNorthEdge || nearSouthEdge || nearWestEdge || nearEastEdge) {
-      
-      // Find appropriate connection
-      const connection = this.gameState.currentMap.connections.find(conn => {
-        // Check which edge the player is near and match with connection direction
-        if (nearNorthEdge && conn.direction === 'north') return true;
-        if (nearSouthEdge && conn.direction === 'south') return true;
-        if (nearWestEdge && conn.direction === 'west') return true;
-        if (nearEastEdge && conn.direction === 'east') return true;
-        return false;
-      });
+    const player = this.gameState.player;
+    const tileX = Math.floor(player.position.x / 32);
+    const tileY = Math.floor(player.position.y / 32);
+    const mapWidth = this.gameState.currentMap.width;
+    const mapHeight = this.gameState.currentMap.height;
+
+    // Check if player is at the EXACT edge (on the border tile)
+    const isAtNorthEdge = tileY === 0;
+    const isAtSouthEdge = tileY === mapHeight - 1;
+    const isAtWestEdge = tileX === 0;
+    const isAtEastEdge = tileX === mapWidth - 1;
+
+    // Determine current edge direction
+    let currentEdgeDirection: string | null = null;
+    if (isAtNorthEdge) currentEdgeDirection = 'north';
+    else if (isAtSouthEdge) currentEdgeDirection = 'south';
+    else if (isAtWestEdge) currentEdgeDirection = 'west';
+    else if (isAtEastEdge) currentEdgeDirection = 'east';
+
+    // Update edge state
+    this.isAtEdge = currentEdgeDirection !== null;
+    this.edgeDirection = currentEdgeDirection;
+
+    // Check if player is moving toward an edge
+    const movingNorth = this.keys.has('w') || this.keys.has('arrowup');
+    const movingSouth = this.keys.has('s') || this.keys.has('arrowdown');
+    const movingWest = this.keys.has('a') || this.keys.has('arrowleft');
+    const movingEast = this.keys.has('d') || this.keys.has('arrowright');
+
+    // Only start transition if at edge AND moving in the direction of that edge
+    let shouldStartTransition = false;
+    if (isAtNorthEdge && movingNorth) shouldStartTransition = true;
+    else if (isAtSouthEdge && movingSouth) shouldStartTransition = true;
+    else if (isAtWestEdge && movingWest) shouldStartTransition = true;
+    else if (isAtEastEdge && movingEast) shouldStartTransition = true;
+
+    if (shouldStartTransition && currentEdgeDirection) {
+      // Check if we have a connection for this direction
+      const connection = this.gameState.currentMap.connections.find(c => c.direction === currentEdgeDirection);
       
       if (connection) {
         this.transitionToMap(connection.targetMapId, connection.toPosition);
