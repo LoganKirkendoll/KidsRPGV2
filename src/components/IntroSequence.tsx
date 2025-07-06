@@ -1,65 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Play, SkipForward } from 'lucide-react';
-import { Character } from '../types/game';
-import BackgroundCutscene from './BackgroundCutscene';
 
 interface IntroSequenceProps {
   onComplete: () => void;
 }
 
 const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
-  const [showBackgroundCutscene, setShowBackgroundCutscene] = useState(false);
   const [currentScene, setCurrentScene] = useState(0);
   const [showText, setShowText] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
-  const [audioInitialized, setAudioInitialized] = useState(false);
-  const [backgroundMusic, setBackgroundMusic] = useState<HTMLAudioElement | null>(null);
-  
-  // Mock character for background cutscene
-  const mockCharacter: Character = {
-    id: 'player',
-    name: 'Vault Dweller',
-    background: 'vault_dweller',
-    age: 25,
-    gender: 'male',
-    class: 'warrior',
-    level: 1,
-    experience: 0,
-    experienceToNext: 100,
-    health: 100,
-    maxHealth: 100,
-    energy: 50,
-    maxEnergy: 50,
-    radiation: 0,
-    maxRadiation: 1000,
-    stats: {
-      strength: 10,
-      agility: 8,
-      intelligence: 6,
-      endurance: 10,
-      luck: 7,
-      perception: 8,
-      charisma: 6
-    },
-    derivedStats: {
-      carryWeight: 100,
-      actionPoints: 4,
-      criticalChance: 7,
-      damageResistance: 0,
-      radiationResistance: 20
-    },
-    skills: [],
-    perks: [],
-    equipment: {},
-    isInParty: true,
-    position: { x: 0, y: 0 },
-    direction: 'down',
-    isMoving: false,
-    sprite: 'warrior',
-    statusEffects: [],
-    biography: '',
-    traits: []
-  };
 
   const scenes = [
     {
@@ -96,30 +45,6 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
     }
   ];
 
-  // Initialize audio
-  useEffect(() => {
-    if (!audioInitialized) {
-      const bgm = new Audio('/assets/audio/intro-theme.mp3');
-      bgm.loop = true;
-      bgm.volume = 0.4;
-      setBackgroundMusic(bgm);
-      
-      setAudioInitialized(true);
-    }
-  }, [audioInitialized]);
-
-  // Play background music
-  useEffect(() => {
-    if (backgroundMusic) {
-      backgroundMusic.play().catch(e => console.log("Audio play failed:", e));
-      
-      return () => {
-        backgroundMusic.pause();
-        backgroundMusic.currentTime = 0;
-      };
-    }
-  }, [backgroundMusic]);
-
   useEffect(() => {
     setCanSkip(true);
     
@@ -131,12 +56,10 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
       if (currentScene < scenes.length - 1) {
         setShowText(false);
         setTimeout(() => {
-          setCurrentScene(prev => prev + 1);
+          setCurrentScene(currentScene + 1);
         }, 500);
       } else {
-        setTimeout(() => {
-          setShowBackgroundCutscene(true);
-        }, 2000);
+        setTimeout(onComplete, 2000);
       }
     }, scenes[currentScene].duration);
 
@@ -148,16 +71,11 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
 
   const handleSkip = () => {
     if (canSkip) {
-      setShowBackgroundCutscene(true);
+      onComplete();
       // Prevent multiple clicks by disabling the button
       setCanSkip(false);
     }
   };
-
-  // Show background cutscene after main intro
-  if (showBackgroundCutscene) {
-    return <BackgroundCutscene character={mockCharacter} onComplete={onComplete} />;
-  }
 
   return (
     <div 

@@ -383,13 +383,6 @@ export interface CombatState {
   combatLog: string[];
 }
 
-export interface CombatAction {
-  type: 'attack' | 'skill' | 'item' | 'flee';
-  skillId?: string;
-  itemId?: string;
-  targetIndex?: number;
-}
-
 export interface CombatAnimation {
   id: string;
   type: 'attack' | 'skill' | 'movement' | 'effect';
