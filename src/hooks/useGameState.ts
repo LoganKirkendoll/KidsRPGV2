@@ -10,6 +10,9 @@ export const useGameState = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [settings, setSettings] = useState<GameSettings>(SaveSystem.loadSettings());
   const [gameMode, setGameMode] = useState<'menu' | 'character-creation' | 'playing'>('menu');
+  const [combatMusic] = useState<HTMLAudioElement | null>(
+    typeof Audio !== 'undefined' ? new Audio('/assets/audio/combat-theme.mp3') : null
+  );
   
   // Export setGameMode for use in other components
   const updateGameMode = useCallback((mode: 'menu' | 'character-creation' | 'playing') => {
@@ -141,14 +144,38 @@ export const useGameState = () => {
     if (saveData) {
       setGameState(saveData.gameState);
       setSettings(saveData.settings);
-      setGameMode('playing');
-      return true;
+      
+      // Play combat music if not already playing
+      if (combatMusic && combatMusic.paused) {
+        combatMusic.loop = true;
+        combatMusic.volume = 0.4;
+        combatMusic.play().catch(e => console.log("Audio play failed:", e));
     }
+      
+      // Process combat action
+      if (engine) {
+        // Create a combat action object
+        const combatAction: CombatAction = {
+          type: action === 'basic_attack' ? 'attack' : 
+                action.startsWith('use_') ? 'item' : 'skill',
+          skillId: action.startsWith('use_') ? undefined : action,
+          itemId: action.startsWith('use_') ? action.replace('use_', '') : undefined,
+          targetIndex
+        };
+        
+        engine.handleCombatAction(combatAction, targetIndex);
+      }
     return false;
-  }, []);
+  }, [gameState?.combat, combatMusic]);
 
   const saveGame = useCallback((slot: number) => {
     if (gameState) {
+      // Stop combat music
+      if (combatMusic) {
+        combatMusic.pause();
+        combatMusic.currentTime = 0;
+      }
+      
       return SaveSystem.saveGame(slot, gameState, settings);
     }
     return false;
@@ -326,7 +353,7 @@ export const useGameState = () => {
       }
       updateGameState(newState);
     }
-  }, [gameState, updateGameState]);
+  }, [gameState, updateGameState, combatMusic]);
 
   const updateSettings = useCallback((newSettings: Partial<GameSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };

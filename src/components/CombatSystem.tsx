@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Character, Enemy, CombatState, Skill, Item } from '../types/game';
+import { Character, Enemy, CombatState, Skill, Item, CombatAction } from '../types/game';
 import { Sword, Shield, Heart, Zap, Package, RotateCcw, ArrowLeft, Target, AlertCircle } from 'lucide-react';
 
 interface CombatSystemProps {
@@ -37,22 +37,68 @@ const CombatSystem: React.FC<CombatSystemProps> = ({
   const [selectedAction, setSelectedAction] = useState<string>('');
   const [selectedTarget, setSelectedTarget] = useState<number>(-1);
   const [animationState, setAnimationState] = useState<'idle' | 'attack' | 'skill' | 'damage' | 'victory'>('idle');
-  const [damageText, setDamageText] = useState<{value: number, isVisible: boolean}>({value: 0, isVisible: false});
+  const [damageText, setDamageText] = useState<{value: number, isVisible: boolean, targetIndex: number}>({value: 0, isVisible: false, targetIndex: -1});
   const [actionMenu, setActionMenu] = useState<'main' | 'skills' | 'items'>('main');
+  const [showIntro, setShowIntro] = useState(true);
+  const [audioInitialized, setAudioInitialized] = useState(false);
+  const [backgroundMusic, setBackgroundMusic] = useState<HTMLAudioElement | null>(null);
+  const [sfx, setSfx] = useState<{[key: string]: HTMLAudioElement}>({});
 
   const currentActor = combatState.turnOrder[combatState.currentTurn];
   const isPlayerTurn = combatState.isPlayerTurn;
 
-  // Get all available skills for the current actor
-  const availableSkills = isPlayerTurn ? (currentActor as Character).skills : [];
+  // Get player character and enemy
+  const player = combatState.participants.find(p => 'class' in p && p.id === 'player') as Character;
+  const enemies = combatState.participants.filter(p => !('class' in p)) as Enemy[];
+  const allies = combatState.participants.filter(p => 'class' in p) as Character[];
 
-  // Get usable consumable items from inventory (assuming we have access to it)
+  // Get all available skills for the current actor
+  const availableSkills = isPlayerTurn && 'skills' in currentActor ? currentActor.skills : [];
+
+  // Get usable consumable items from inventory
   const usableItems = [
     { id: 'stimpak', name: 'Stimpak', description: 'Restore 50 HP', energyCost: 1 },
     { id: 'rad_away', name: 'Rad-Away', description: 'Remove radiation', energyCost: 1 },
-    { id: 'psycho', name: 'Psycho', description: 'Boost damage +25%', energyCost: 1 }
+    { id: 'psycho', name: 'Psycho', description: 'Boost damage +25%', energyCost: 1 },
+    { id: 'buffout', name: 'Buffout', description: 'Boost strength +3', energyCost: 1 },
+    { id: 'mentats', name: 'Mentats', description: 'Boost intelligence +3', energyCost: 1 }
   ];
 
+  // Initialize audio
+  useEffect(() => {
+    if (!audioInitialized) {
+      // Background music
+      const bgm = new Audio('/assets/audio/combat-theme.mp3');
+      bgm.loop = true;
+      bgm.volume = 0.4;
+      setBackgroundMusic(bgm);
+      
+      // Sound effects
+      setSfx({
+        attack: new Audio('/assets/audio/attack.mp3'),
+        skill: new Audio('/assets/audio/skill.mp3'),
+        damage: new Audio('/assets/audio/damage.mp3'),
+        heal: new Audio('/assets/audio/heal.mp3'),
+        victory: new Audio('/assets/audio/victory.mp3')
+      });
+      
+      setAudioInitialized(true);
+    }
+  }, [audioInitialized]);
+
+  // Play background music when combat starts
+  useEffect(() => {
+    if (backgroundMusic && !showIntro) {
+      backgroundMusic.play().catch(e => console.log("Audio play failed:", e));
+      
+      return () => {
+        backgroundMusic.pause();
+        backgroundMusic.currentTime = 0;
+      };
+    }
+  }, [backgroundMusic, showIntro]);
+
+  // Handle combat log updates
   useEffect(() => {
     if (combatState.combatLog.length > 0) {
       const latestLog = combatState.combatLog[combatState.combatLog.length - 1];
@@ -60,27 +106,67 @@ const CombatSystem: React.FC<CombatSystemProps> = ({
       // Extract damage value if present
       const damageMatch = latestLog.match(/(\d+) damage/);
       if (damageMatch) {
-        setDamageText({value: parseInt(damageMatch[1]), isVisible: true});
+        // Find which participant was targeted
+        const targetIndex = latestLog.includes("attacks you") ? 
+          combatState.participants.findIndex(p => p.id === 'player') : 
+          combatState.participants.findIndex(p => !('class' in p));
+        
+        setDamageText({
+          value: parseInt(damageMatch[1]), 
+          isVisible: true,
+          targetIndex
+        });
+        
         setAnimationState('damage');
         
+        // Play damage sound
+        if (sfx.damage) {
+          sfx.damage.currentTime = 0;
+          sfx.damage.play().catch(e => console.log("Audio play failed:", e));
+        }
+        
         setTimeout(() => {
-          setDamageText({value: 0, isVisible: false});
+          setDamageText({value: 0, isVisible: false, targetIndex: -1});
           setAnimationState('idle');
         }, 1000);
       }
     }
-  }, [combatState.combatLog]);
+  }, [combatState.combatLog, sfx]);
 
   const handleAction = () => {
     if (selectedAction && selectedTarget >= 0) {
       if (selectedAction === 'attack') {
         setAnimationState('attack');
+        
+        // Play attack sound
+        if (sfx.attack) {
+          sfx.attack.currentTime = 0;
+          sfx.attack.play().catch(e => console.log("Audio play failed:", e));
+        }
+        
         setTimeout(() => {
           onAction('basic_attack', selectedTarget);
           setAnimationState('idle');
         }, 500);
+      } else if (selectedAction.startsWith('use_')) {
+        // Play heal sound for items
+        if (sfx.heal) {
+          sfx.heal.currentTime = 0;
+          sfx.heal.play().catch(e => console.log("Audio play failed:", e));
+        }
+        
+        setTimeout(() => {
+          onAction(selectedAction, selectedTarget);
+        }, 300);
       } else {
         setAnimationState('skill');
+        
+        // Play skill sound
+        if (sfx.skill) {
+          sfx.skill.currentTime = 0;
+          sfx.skill.play().catch(e => console.log("Audio play failed:", e));
+        }
+        
         setTimeout(() => {
           onAction(selectedAction, selectedTarget);
           setAnimationState('idle');
@@ -97,22 +183,33 @@ const CombatSystem: React.FC<CombatSystemProps> = ({
     const skill = availableSkills.find(s => s.id === skillId);
     if (skill && canUseSkill(skill, currentActor as Character)) {
       setSelectedAction(skillId);
-      // Auto-select enemy as target for offensive skills
-      const enemies = combatState.participants.filter(p => !('class' in p));
-      if (enemies.length > 0) {
-        setSelectedTarget(combatState.participants.indexOf(enemies[0]));
-        handleAction();
+      
+      // Auto-select target based on skill type
+      if (skill.healing) {
+        // Healing skills target allies
+        const targetAlly = allies.find(a => a.health < a.maxHealth) || allies[0];
+        setSelectedTarget(combatState.participants.indexOf(targetAlly));
+      } else {
+        // Damage skills target enemies
+        if (enemies.length > 0) {
+          setSelectedTarget(combatState.participants.indexOf(enemies[0]));
+        }
+      }
+      
+      // Auto execute if we have a target
+      if (selectedTarget >= 0 || (enemies.length > 0 && !skill.healing) || allies.length > 0) {
+        setTimeout(() => handleAction(), 50);
       }
     }
   };
 
   const handleItemSelect = (itemId: string) => {
     setSelectedAction(`use_${itemId}`);
+    
     // Auto-select self as target for items
-    const allies = combatState.participants.filter(p => 'class' in p);
     if (allies.length > 0) {
       setSelectedTarget(combatState.participants.indexOf(allies[0]));
-      handleAction();
+      setTimeout(() => handleAction(), 50);
     }
   };
 
@@ -132,8 +229,105 @@ const CombatSystem: React.FC<CombatSystemProps> = ({
     return actor.energy >= skill.energyCost && skill.currentCooldown <= 0;
   };
 
-  const allies = combatState.participants.filter(p => isCharacter(p)) as Character[];
-  const enemies = combatState.participants.filter(p => !isCharacter(p)) as Enemy[];
+  const getBackgroundForCharacter = (character: Character) => {
+    switch(character.background) {
+      case 'vault_dweller':
+        return 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
+      case 'wasteland_wanderer':
+        return 'linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #cd853f 100%)';
+      case 'tribal':
+        return 'linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #7f8c8d 100%)';
+      case 'raider':
+        return 'linear-gradient(135deg, #ff6b35 0%, #f7931e 50%, #ffcc02 100%)';
+      default:
+        return 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
+    }
+  };
+
+  const getIntroTextForBackground = (background: string) => {
+    switch(background) {
+      case 'vault_dweller':
+        return "The Vault Dweller's technical knowledge gives them an edge in combat.";
+      case 'wasteland_wanderer':
+        return "Years in the wasteland have honed their survival instincts.";
+      case 'tribal':
+        return "Ancient tribal techniques make them a formidable warrior.";
+      case 'raider':
+        return "Their ruthless past as a raider makes them unpredictable in battle.";
+      default:
+        return "A survivor ready for combat.";
+    }
+  };
+
+  // Combat intro screen
+  if (showIntro) {
+    return (
+      <div 
+        className="fixed inset-0 flex items-center justify-center transition-all duration-1000"
+        style={{ background: getBackgroundForCharacter(player) }}
+      >
+        <div className="absolute inset-0 opacity-20">
+          {/* Background effects based on character background */}
+          {player.background === 'vault_dweller' && (
+            <div className="absolute inset-0 bg-blue-900 opacity-10 animate-pulse" />
+          )}
+          {player.background === 'wasteland_wanderer' && (
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-transparent to-black animate-pulse" />
+          )}
+          {player.background === 'tribal' && (
+            <>
+              {[...Array(30)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-1 h-8 bg-yellow-600 opacity-30 animate-pulse"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 3}s`,
+                    animationDuration: `${2 + Math.random() * 3}s`
+                  }}
+                />
+              ))}
+            </>
+          )}
+          {player.background === 'raider' && (
+            <div className="absolute inset-0 bg-white opacity-20 animate-pulse" />
+          )}
+        </div>
+
+        {/* Main content with cinematic bars */}
+        <div className="relative z-10 w-full h-full flex flex-col">
+          {/* Top cinematic bar */}
+          <div className="h-16 bg-black opacity-80" />
+          
+          {/* Content area */}
+          <div className="flex-1 flex items-center justify-center px-8">
+            <div className="text-center">
+              <h1 className="text-6xl md:text-8xl font-bold mb-4 text-white drop-shadow-2xl tracking-wider animate-pulse">
+                COMBAT ENGAGED
+              </h1>
+              <h2 className="text-2xl md:text-4xl font-semibold mb-8 text-yellow-400 drop-shadow-lg">
+                {player.name} vs {enemies[0]?.name || "Enemy"}
+              </h2>
+              <p className="text-lg md:text-xl text-gray-200 leading-relaxed max-w-2xl mx-auto drop-shadow-md">
+                {getIntroTextForBackground(player.background)}
+              </p>
+              
+              <button
+                onClick={() => setShowIntro(false)}
+                className="mt-8 bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-bold transition-all"
+              >
+                FIGHT!
+              </button>
+            </div>
+          </div>
+          
+          {/* Bottom cinematic bar */}
+          <div className="h-16 bg-black opacity-80" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-blue-900 via-purple-900 to-indigo-900 text-white overflow-hidden">
@@ -189,9 +383,16 @@ const CombatSystem: React.FC<CombatSystemProps> = ({
                     bg-black/50 backdrop-blur-sm rounded-lg p-4 border-2 mb-4 transition-all
                     ${currentActor === enemy ? 'border-red-400 bg-red-900/30' : 'border-gray-600'}
                     ${selectedTarget === combatState.participants.indexOf(enemy) ? 'ring-2 ring-yellow-400' : ''}
+                    ${damageText.isVisible && damageText.targetIndex === combatState.participants.indexOf(enemy) ? 'animate-bounce' : ''}
+                    cursor-pointer
                   `}
                   onClick={() => {
                     if (isPlayerTurn && selectedAction) {
+                      setSelectedTarget(combatState.participants.indexOf(enemy));
+                      handleAction();
+                    } else if (isPlayerTurn) {
+                      // Quick attack when clicking enemy without selecting action
+                      setSelectedAction('attack');
                       setSelectedTarget(combatState.participants.indexOf(enemy));
                       handleAction();
                     }
@@ -200,19 +401,18 @@ const CombatSystem: React.FC<CombatSystemProps> = ({
                   <div className="flex items-center gap-4">
                     {/* Enemy Icon */}
                     <div className={`
-                      w-16 h-16 rounded-lg flex items-center justify-center text-2xl
+                      w-16 h-16 rounded-lg flex items-center justify-center text-2xl relative
                       ${enemy.type === 'raider' ? 'bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-500' : 
                         enemy.type === 'mutant' ? 'bg-gradient-to-br from-green-600 to-green-800 border-2 border-green-500' : 
                         enemy.type === 'robot' ? 'bg-gradient-to-br from-gray-600 to-gray-800 border-2 border-gray-500' : 
                         'bg-gradient-to-br from-orange-600 to-yellow-800 border-2 border-yellow-500'}
-                      ${animationState === 'damage' && selectedTarget === combatState.participants.indexOf(enemy) ? 'animate-bounce' : ''}
                     `}>
                       {enemy.type === 'raider' ? '👤' : 
                        enemy.type === 'mutant' ? '👹' : 
                        enemy.type === 'robot' ? '🤖' : '👾'}
                        
                       {/* Damage Text Animation */}
-                      {damageText.isVisible && selectedTarget === combatState.participants.indexOf(enemy) && (
+                      {damageText.isVisible && damageText.targetIndex === combatState.participants.indexOf(enemy) && (
                         <div className="absolute -top-8 text-red-400 font-bold text-xl animate-bounce">
                           -{damageText.value}
                         </div>
@@ -276,6 +476,9 @@ const CombatSystem: React.FC<CombatSystemProps> = ({
                     bg-black/50 backdrop-blur-sm rounded-lg p-4 border-2 mb-4 transition-all
                     ${currentActor === character ? 'border-blue-400 bg-blue-900/30' : 'border-gray-600'}
                     ${selectedTarget === combatState.participants.indexOf(character) ? 'ring-2 ring-green-400' : ''}
+                    ${damageText.isVisible && damageText.targetIndex === combatState.participants.indexOf(character) ? 'animate-bounce' : ''}
+                    ${animationState === 'attack' && currentActor === character ? 'scale-110' : ''}
+                    cursor-pointer
                   `}
                   onClick={() => {
                     if (isPlayerTurn && selectedAction && selectedAction.includes('heal')) {
@@ -287,16 +490,22 @@ const CombatSystem: React.FC<CombatSystemProps> = ({
                   <div className="flex items-center gap-4">
                     {/* Character Icon */}
                     <div className={`
-                      w-16 h-16 rounded-lg flex items-center justify-center text-2xl
+                      w-16 h-16 rounded-lg flex items-center justify-center text-2xl relative
                       ${character.class === 'warrior' ? 'bg-gradient-to-br from-red-600 to-red-800 border-2 border-red-500' : 
                         character.class === 'ranger' ? 'bg-gradient-to-br from-green-600 to-green-800 border-2 border-green-500' : 
                         character.class === 'medic' ? 'bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-500' : 
                         'bg-gradient-to-br from-purple-600 to-purple-800 border-2 border-purple-500'}
-                      ${animationState === 'attack' && currentActor === character ? 'scale-110' : ''}
                     `}>
                       {character.class === 'warrior' ? '⚔️' : 
                        character.class === 'ranger' ? '🏹' : 
                        character.class === 'medic' ? '💉' : '🔧'}
+                       
+                      {/* Damage Text Animation */}
+                      {damageText.isVisible && damageText.targetIndex === combatState.participants.indexOf(character) && (
+                        <div className="absolute -top-8 text-red-400 font-bold text-xl animate-bounce">
+                          -{damageText.value}
+                        </div>
+                      )}
                     </div>
                     
                     {/* Character Info */}
