@@ -5,7 +5,7 @@ import IntroSequence from './components/IntroSequence';
 import CharacterCreation from './components/UI/CharacterCreation';
 import GameCanvas from './components/GameCanvas';
 import GameHUD from './components/GameHUD';
-import PokemonStyleCombat from './components/PokemonStyleCombat';
+import CombatSystem from './components/CombatSystem';
 import { GameEngine } from './engine/GameEngine';
 import InventoryScreen from './components/InventoryScreen';
 import EquipmentScreen from './components/EquipmentScreen';
@@ -556,7 +556,7 @@ function App() {
 
       if (gameState.gameMode === 'combat' && gameState.combat) {
         return (
-          <PokemonStyleCombat
+          <CombatSystem
             combatState={gameState.combat}
             onAction={handleCombatAction}
             onEndCombat={handleEndCombat}

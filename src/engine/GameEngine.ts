@@ -544,11 +544,14 @@ export class GameEngine {
 
   private startCombat(enemies: Enemy[]) {
     const participants = [this.gameState.player, ...enemies];
-    const turnOrder = [...participants].sort((a, b) => {
-      const aAgility = 'stats' in a ? a.stats.agility : 5;
+    const sortedParticipants = [...combatState.participants].sort((a, b) => {
+      turnOrder: [], // Will be filled below
       const bAgility = 'stats' in b ? b.stats.agility : 5;
       return bAgility - aAgility;
     });
+    
+    combatState.turnOrder = sortedParticipants;
+    combatState.isPlayerTurn = 'class' in sortedParticipants[0]; // Check if first actor is a player character
 
     this.gameState.combat = {
       participants,
@@ -1720,7 +1723,251 @@ export class GameEngine {
 
   public handleCombatAction(action: string, targetIndex?: number) {
     console.log('Combat action:', action, targetIndex);
+    if (!this.gameState.combat) return;
+    
+    const combat = {...this.gameState.combat};
+    const currentActor = combat.turnOrder[combat.currentTurn];
+    const target = targetIndex !== undefined ? combat.participants[targetIndex] : null;
+    
+    if (!target) return;
+    
+    // Process the action
+    if (action === 'basic_attack') {
+      // Basic attack logic
+      const damage = 'damage' in currentActor ? currentActor.damage : 10;
+      target.health = Math.max(0, target.health - damage);
+      
+      // Add to combat log
+      combat.combatLog.push(`${currentActor.name} attacks ${target.name} for ${damage} damage!`);
+      
+      // Check for defeat
+      if (target.health <= 0) {
+        combat.combatLog.push(`${target.name} has been defeated!`);
+      }
+    } else if (action.startsWith('use_')) {
+      // Item usage logic
+      const itemId = action.replace('use_', '');
+      
+      if (itemId === 'stimpak') {
+        const healing = 50;
+        target.health = Math.min(target.maxHealth, target.health + healing);
+        combat.combatLog.push(`${currentActor.name} uses Stimpak on ${target.name}, healing for ${healing} HP!`);
+      } else if (itemId === 'rad_away') {
+        if ('radiation' in target) {
+          (target as Character).radiation = Math.max(0, (target as Character).radiation - 100);
+          combat.combatLog.push(`${currentActor.name} uses Rad-Away on ${target.name}, removing radiation!`);
+        }
+      } else if (itemId === 'psycho') {
+        // Add a temporary buff
+        target.statusEffects.push({
+          type: 'damage_buff',
+          duration: 3,
+          value: 25,
+          source: 'Psycho'
+        });
+        combat.combatLog.push(`${currentActor.name} uses Psycho on ${target.name}, increasing damage!`);
+      }
+      
+      // Reduce energy for item use
+      if ('energy' in currentActor) {
+        currentActor.energy = Math.max(0, currentActor.energy - 1);
+      }
+    } else {
+      // Skill usage
+      if ('class' in currentActor) {
+        const skill = currentActor.skills.find(s => s.id === action);
+        
+        if (skill) {
+          // Apply skill effects
+          if (skill.damage) {
+            const damage = skill.damage;
+            target.health = Math.max(0, target.health - damage);
+            combat.combatLog.push(`${currentActor.name} uses ${skill.name} on ${target.name} for ${damage} damage!`);
+            
+            // Check for defeat
+            if (target.health <= 0) {
+              combat.combatLog.push(`${target.name} has been defeated!`);
+            }
+          }
+          
+          if (skill.healing) {
+            const healing = skill.healing;
+            target.health = Math.min(target.maxHealth, target.health + healing);
+            combat.combatLog.push(`${currentActor.name} uses ${skill.name} on ${target.name}, healing for ${healing} HP!`);
+          }
+          
+          if (skill.effect) {
+            target.statusEffects.push({
+              type: skill.effect.type,
+              duration: skill.effect.duration,
+              value: skill.effect.value,
+              source: skill.name
+            });
+            combat.combatLog.push(`${currentActor.name} uses ${skill.name} on ${target.name}, applying ${skill.effect.type}!`);
+          }
+          
+          // Reduce energy and set cooldown
+          currentActor.energy = Math.max(0, currentActor.energy - skill.energyCost);
+          skill.currentCooldown = skill.cooldown;
+        }
+      }
+    }
+    
+    // Check if combat should end
+    const allEnemiesDefeated = combat.participants.filter(p => !('class' in p)).every(e => e.health <= 0);
+    const allAlliesDefeated = combat.participants.filter(p => 'class' in p).every(c => c.health <= 0);
+    
+    if (allEnemiesDefeated) {
+      combat.combatLog.push('Victory! All enemies have been defeated!');
+      
+      // Update game state with rewards, experience, etc.
+      const newState = {...this.gameState};
+      
+      // Grant experience
+      const totalExp = enemies.reduce((sum, enemy) => sum + enemy.experience, 0);
+      newState.player.experience += totalExp;
+      
+      // Check for level up
+      if (newState.player.experience >= newState.player.experienceToNext) {
+        newState.player.level += 1;
+        newState.player.experience -= newState.player.experienceToNext;
+        newState.player.experienceToNext = Math.floor(newState.player.experienceToNext * 1.5);
+        newState.player.maxHealth += 10;
+        newState.player.health = newState.player.maxHealth;
+        newState.player.maxEnergy += 5;
+        newState.player.energy = newState.player.maxEnergy;
+        
+        combat.combatLog.push(`${newState.player.name} leveled up to level ${newState.player.level}!`);
+      }
+      
+      // Add loot to inventory
+      enemies.forEach(enemy => {
+        enemy.loot.forEach(lootItem => {
+          if (Math.random() < lootItem.chance) {
+            const item = {...lootItem.item};
+            if (item.stackable && item.quantity) {
+              item.quantity = lootItem.quantity;
+            }
+            newState.inventory.push(item);
+            combat.combatLog.push(`Found ${item.name}!`);
+          }
+        });
+      });
+      
+      // End combat after a delay
+      setTimeout(() => {
+        newState.combat = undefined;
+        newState.gameMode = 'exploration';
+        this.updateGameState(newState);
+      }, 3000);
+      
+      return;
+    }
+    
+    if (allAlliesDefeated) {
+      combat.combatLog.push('Defeat! Your party has been wiped out!');
+      
+      // Handle game over or respawn logic
+      setTimeout(() => {
+        const newState = {...this.gameState};
+        newState.combat = undefined;
+        newState.gameMode = 'exploration';
+        
+        // Restore some health to avoid immediate death
+        newState.player.health = Math.max(1, Math.floor(newState.player.maxHealth * 0.1));
+        
+        this.updateGameState(newState);
+      }, 3000);
+      
+      return;
+    }
+    
+    // Move to next turn
+    combat.currentTurn = (combat.currentTurn + 1) % combat.turnOrder.length;
+    
+    // If we've gone through all participants, start a new round
+    if (combat.currentTurn === 0) {
+      combat.round += 1;
+      
+      // Process status effects and cooldowns at the start of a new round
+      combat.participants.forEach(participant => {
+        // Reduce cooldowns
+        if ('skills' in participant) {
+          participant.skills.forEach(skill => {
+            if (skill.currentCooldown > 0) {
+              skill.currentCooldown = Math.max(0, skill.currentCooldown - 1);
+            }
+          });
+        }
+        
+        // Process status effects
+        participant.statusEffects = participant.statusEffects.filter(effect => {
+          effect.duration -= 1;
+          
+          // Apply effect
+          if (effect.type === 'poison') {
+            const damage = effect.value;
+            participant.health = Math.max(0, participant.health - damage);
+            combat.combatLog.push(`${participant.name} takes ${damage} poison damage!`);
+          }
+          
+          return effect.duration > 0;
+        });
+        
+        // Regenerate some energy
+        if ('energy' in participant) {
+          participant.energy = Math.min(participant.maxEnergy, participant.energy + 2);
+        }
+      });
+    }
+    
+    // Check if current actor is a player character
+    combat.isPlayerTurn = 'class' in combat.turnOrder[combat.currentTurn];
+    
+    // If it's an enemy's turn, process their AI after a delay
+    if (!combat.isPlayerTurn) {
+      setTimeout(() => {
+        this.processEnemyTurn(combat);
+      }, 1500);
+    }
+    
+    // Update game state with new combat state
+    const newState = {...this.gameState};
+    newState.combat = combat;
+    this.updateGameState(newState);
   }
+  
+  private processEnemyTurn(combat: CombatState) {
+    const currentEnemy = combat.turnOrder[combat.currentTurn] as Enemy;
+    const allies = combat.participants.filter(p => 'class' in p) as Character[];
+    
+    // Simple AI: target a random ally with the lowest health
+    const sortedAllies = [...allies].sort((a, b) => 
+      (a.health / a.maxHealth) - (b.health / b.maxHealth)
+    );
+    
+    if (sortedAllies.length > 0) {
+      const target = sortedAllies[0];
+      const targetIndex = combat.participants.indexOf(target);
+      
+      // Choose a skill if available, otherwise basic attack
+      if (currentEnemy.skills.length > 0 && Math.random() > 0.3) {
+        // Filter skills that can be used
+        const usableSkills = currentEnemy.skills.filter(skill => 
+          skill.currentCooldown <= 0 && currentEnemy.energy >= skill.energyCost
+        );
+        
+        if (usableSkills.length > 0) {
+          // Pick a random skill
+          const skill = usableSkills[Math.floor(Math.random() * usableSkills.length)];
+          this.handleCombatAction(skill.id, targetIndex);
+          return;
+        }
+      }
+      
+      // Default to basic attack
+      this.handleCombatAction('basic_attack', targetIndex);
+    }
 
   public destroy() {
     if (this.animationId) {
