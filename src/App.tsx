@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameState } from './hooks/useGameState';
 import MainMenu from './components/UI/MainMenu';
-import IntroScreen from './components/IntroScreen';
 import CharacterCreation from './components/UI/CharacterCreation';
 import GameCanvas from './components/GameCanvas';
 import { GameEngine } from './engine/GameEngine';
@@ -44,7 +43,6 @@ function App() {
   const [tradingNPC, setTradingNPC] = useState<any>(null);
   const [showGameOver, setShowGameOver] = useState(false);
   const engineRef = useRef<GameEngine | null>(null);
-  const [showIntro, setShowIntro] = useState(false);
 
   // Listen for lootable events from the game engine
   useEffect(() => {
@@ -420,28 +418,14 @@ function App() {
   const handleGameOverMainMenu = () => {
     setShowGameOver(false);
     setGameMode('menu');
-    updateGameState(null);
+    setGameState(null);
   };
-
-  const handleStartNewGame = () => {
-    setShowIntro(true);
-  };
-
-  const handleIntroComplete = () => {
-    setShowIntro(false);
-    setGameMode('character-creation');
-  };
-
-  // Show intro screen
-  if (showIntro) {
-    return <IntroScreen onComplete={handleIntroComplete} />;
-  }
 
   switch (gameMode) {
     case 'menu':
       return (
         <MainMenu
-          onNewGame={handleStartNewGame}
+          onNewGame={startNewGame}
           onLoadGame={loadGame}
           onSettings={handleSettings}
           onQuit={quitGame}
