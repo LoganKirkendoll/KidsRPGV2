@@ -1134,100 +1134,78 @@ export class GameEngine {
   private renderEnhancedTile(tile: Tile, x: number, y: number) {
     // Base tile color with enhanced graphics
     let baseColor = this.getTileColor(tile.type);
-    const isInterior = this.gameState.currentMap.isInterior;
-    
-    if (!tile.visible && tile.discovered) {
+
+    // For interior tiles, always make them visible
+    if (this.gameState.currentMap.isInterior) {
+      tile.visible = true;
+      tile.discovered = true;
+    } else if (!tile.visible && tile.discovered) {
       baseColor = this.darkenColor(baseColor, 0.5);
     }
     
     // Add texture pattern
-    if (!this.settings.lowGraphicsMode && !isInterior) {
+    if (!this.settings.lowGraphicsMode && !this.gameState.currentMap.isInterior) {
       this.renderTileTexture(tile.type, x, y, baseColor);
     } else {
       this.ctx.fillStyle = baseColor;
       this.ctx.fillRect(x, y, 32, 32);
       
       // For interior maps, add floor tiles
-      if (isInterior) {
+      if (this.gameState.currentMap.isInterior) {
         this.renderInteriorTile(tile, x, y);
       }
     }
     
     // Add environmental details
-    if (tile.visible && !this.settings.lowGraphicsMode && !isInterior) {
+    if (tile.visible && !this.settings.lowGraphicsMode && !this.gameState.currentMap.isInterior) {
       this.renderTileDetails(tile, x, y);
     }
   }
   
   private renderInteriorTile(tile: Tile, x: number, y: number) {
-    // Interior-specific rendering with better visibility
-    let baseColor = '#8B4513'; // Wood floor default
+    // Special rendering for interior tiles
+    const ctx = this.ctx;
     
-    if (tile.type === 'building' || !tile.walkable) {
-      // Wall
-      baseColor = '#5D4037'; // Dark wood for walls
+    // Floor
+    if (tile.type === 'stone') {
+      ctx.fillStyle = '#8D6E63'; // Brown wooden floor
+      ctx.fillRect(x, y, 32, 32);
       
-      // Draw wall with 3D effect
-      this.ctx.fillStyle = baseColor;
-      this.ctx.fillRect(x, y, 32, 32);
+      // Add wood grain texture
+      ctx.strokeStyle = '#795548';
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x, y + i * 8);
+        ctx.lineTo(x + 32, y + i * 8);
+        ctx.stroke();
+      }
+    }
+    
+    // Walls
+    if (tile.type === 'building' || tile.type === 'furniture') {
+      ctx.fillStyle = '#5D4037'; // Dark brown wall
+      ctx.fillRect(x, y, 32, 32);
       
-      // Top highlight
-      this.ctx.fillStyle = this.lightenColor(baseColor, 1.2);
-      this.ctx.fillRect(x, y, 32, 5);
+      // Add wall texture
+      ctx.fillStyle = '#4E342E';
+      ctx.fillRect(x + 2, y + 2, 28, 28);
       
-      // Left highlight
-      this.ctx.fillStyle = this.lightenColor(baseColor, 1.1);
-      this.ctx.fillRect(x, y, 5, 32);
-      
-      // Bottom shadow
-      this.ctx.fillStyle = this.darkenColor(baseColor, 0.8);
-      this.ctx.fillRect(x, y + 27, 32, 5);
-      
-      // Right shadow
-      this.ctx.fillStyle = this.darkenColor(baseColor, 0.9);
-      this.ctx.fillRect(x + 27, y, 5, 32);
-    } else if (tile.isEntrance || tile.isExit) {
-      // Door/entrance
-      this.ctx.fillStyle = '#A1887F'; // Light wood for doors
-      this.ctx.fillRect(x, y, 32, 32);
+      // Add 3D effect
+      ctx.fillStyle = '#3E2723';
+      ctx.fillRect(x + 28, y, 4, 32); // Right shadow
+      ctx.fillRect(x, y + 28, 32, 4); // Bottom shadow
+    }
+    
+    // Entrance/Exit
+    if (tile.isEntrance || tile.isExit) {
+      ctx.fillStyle = '#FFD54F'; // Gold for entrances/exits
+      ctx.fillRect(x + 8, y + 8, 16, 16);
       
       // Door frame
-      this.ctx.strokeStyle = '#3E2723';
-      this.ctx.lineWidth = 2;
-      this.ctx.strokeRect(x + 2, y + 2, 28, 28);
-      
-      // Door handle
-      this.ctx.fillStyle = '#FFC107';
-      this.ctx.fillRect(x + 22, y + 16, 4, 4);
-      
-      // Special marker for entrance/exit
-      this.ctx.fillStyle = tile.isEntrance ? '#4CAF50' : '#F44336';
-      this.ctx.beginPath();
-      this.ctx.arc(x + 16, y + 8, 4, 0, Math.PI * 2);
-      this.ctx.fill();
-    } else {
-      // Floor
-      this.ctx.fillStyle = baseColor;
-      this.ctx.fillRect(x, y, 32, 32);
-      
-      // Wood grain texture
-      if (!this.settings.lowGraphicsMode) {
-        this.ctx.save();
-        this.ctx.globalAlpha = 0.3;
-        this.ctx.strokeStyle = this.darkenColor(baseColor, 0.7);
-        this.ctx.lineWidth = 1;
-        
-        // Horizontal grain lines
-        for (let i = 0; i < 4; i++) {
-          const yPos = y + 8 * i + 4;
-          this.ctx.beginPath();
-          this.ctx.moveTo(x, yPos);
-          this.ctx.lineTo(x + 32, yPos);
-          this.ctx.stroke();
-        }
-        
-        this.ctx.restore();
-      }
+      ctx.strokeStyle = '#FF9800';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 6, y + 6, 20, 20);
     }
   }
 
