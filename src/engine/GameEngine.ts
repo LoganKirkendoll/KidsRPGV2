@@ -15,6 +15,8 @@ export class GameEngine {
   private edgeTimer = 0;
   private currentEdgeDirection: string | null = null;
   private isAtEdge = false;
+  private readonly EDGE_THRESHOLD = 64; // 2 tiles from edge
+  private readonly TRANSITION_DELAY = 2000; // 2 seconds
   
   // Enhanced graphics properties
   private particleSystem: Particle[] = [];
@@ -520,72 +522,45 @@ export class GameEngine {
     
     const player = this.gameState.player;
     const map = this.gameState.currentMap;
-    const tileSize = 32;
+    const edgeThreshold = this.EDGE_THRESHOLD;
     
-    // Calculate player's tile position
-    const playerTileX = Math.floor(player.position.x / tileSize);
-    const playerTileY = Math.floor(player.position.y / tileSize);
+    // Check if player is at the very edge (within 32 pixels)
+    const atNorthEdge = player.position.y <= 32;
+    const atSouthEdge = player.position.y >= (map.height * 32) - 32;
+    const atWestEdge = player.position.x <= 32;
+    const atEastEdge = player.position.x >= (map.width * 32) - 32;
     
-    // Check if player is at any edge
-    let atEdge = false;
-    let edgeDirection = null;
+    let currentEdgeDirection: string | null = null;
     
-    // Check edges with a small buffer (1 tile from edge)
-    if (playerTileX <= 1) {
-      atEdge = true;
-      edgeDirection = 'west';
-    } else if (playerTileX >= map.width - 2) {
-      atEdge = true;
-      edgeDirection = 'east';
-    } else if (playerTileY <= 1) {
-      atEdge = true;
-      edgeDirection = 'north';
-    } else if (playerTileY >= map.height - 2) {
-      atEdge = true;
-      edgeDirection = 'south';
-    }
-    
-    // Check if player is moving in the direction of the edge
-    let movingTowardEdge = false;
-    if (atEdge && edgeDirection) {
-      switch (edgeDirection) {
-        case 'west':
-          movingTowardEdge = this.keys.has('ArrowLeft') || this.keys.has('a') || this.keys.has('A');
-          break;
-        case 'east':
-          movingTowardEdge = this.keys.has('ArrowRight') || this.keys.has('d') || this.keys.has('D');
-          break;
-        case 'north':
-          movingTowardEdge = this.keys.has('ArrowUp') || this.keys.has('w') || this.keys.has('W');
-          break;
-        case 'south':
-          movingTowardEdge = this.keys.has('ArrowDown') || this.keys.has('s') || this.keys.has('S');
-          break;
-      }
+    // Only trigger if player is AT the edge AND moving toward it
+    if (atNorthEdge && (this.keys.has('w') || this.keys.has('ArrowUp'))) {
+      currentEdgeDirection = 'north';
+    } else if (atSouthEdge && (this.keys.has('s') || this.keys.has('ArrowDown'))) {
+      currentEdgeDirection = 'south';
+    } else if (atWestEdge && (this.keys.has('a') || this.keys.has('ArrowLeft'))) {
+      currentEdgeDirection = 'west';
+    } else if (atEastEdge && (this.keys.has('d') || this.keys.has('ArrowRight'))) {
+      currentEdgeDirection = 'east';
     }
     
     // Update edge timer
-    if (atEdge && movingTowardEdge && edgeDirection === this.currentEdgeDirection) {
-      this.edgeTimer += deltaTime;
+    if (currentEdgeDirection && currentEdgeDirection === this.currentEdgeDirection) {
       this.isAtEdge = true;
+      this.edgeTimer += deltaTime * 1000;
       
       // Show transition indicator after 1 second
-      if (this.edgeTimer > 1000) {
-        this.showTransitionIndicator(edgeDirection, this.edgeTimer);
+      if (this.edgeTimer >= 1000 && this.edgeTimer < this.TRANSITION_DELAY) {
+        this.showTransitionIndicator(currentEdgeDirection, this.edgeTimer);
       }
       
       // Trigger transition after 2 seconds
-      if (this.edgeTimer >= 2000) {
-        this.triggerMapTransition(edgeDirection);
-        this.resetEdgeTimer();
+      if (this.edgeTimer >= this.TRANSITION_DELAY) {
+        this.triggerMapTransition(currentEdgeDirection);
       }
     } else {
       // Reset timer if conditions aren't met
-      if (this.currentEdgeDirection !== edgeDirection || !atEdge || !movingTowardEdge) {
-        this.resetEdgeTimer();
-      }
-      this.currentEdgeDirection = edgeDirection;
-      this.isAtEdge = atEdge;
+      this.resetEdgeTimer();
+      this.currentEdgeDirection = currentEdgeDirection;
     }
   }
   
@@ -603,66 +578,58 @@ export class GameEngine {
   private triggerMapTransition(direction: string): void {
     if (!this.gameState) return;
     
+    console.log(`Transitioning ${direction} from ${this.gameState.currentMap.id}`);
+
     const currentMap = this.gameState.currentMap;
     const connection = currentMap.connections.find(conn => conn.direction === direction);
-    
+
     if (!connection) {
       console.log(`No connection found for direction: ${direction}`);
       return;
     }
+
+    const targetMapId = connection.targetMapId;
+    console.log(`Loading map: ${targetMapId}`);
     
-    console.log(`Transitioning ${direction} to ${connection.targetMapId}`);
-    
-    // Create or get the target map
-    let targetMap = this.gameState.availableMaps[connection.targetMapId];
-    if (!targetMap) {
-      // Create the map if it doesn't exist
-      const { maps } = require('../data/maps');
-      const createMapFn = maps[connection.targetMapId];
-      if (createMapFn) {
-        targetMap = createMapFn();
-        this.gameState.availableMaps[connection.targetMapId] = targetMap;
-      } else {
-        console.error(`No map creator found for: ${connection.targetMapId}`);
+    // Import the map creation function
+    import('../data/maps').then(({ maps }) => {
+      const createMapFn = maps[targetMapId as keyof typeof maps];
+      if (!createMapFn) {
+        console.error(`No map creation function for: ${targetMapId}`);
         return;
       }
-    }
-    
-    // Update game state
-    this.gameState.currentMap = targetMap;
-    
-    // Set player position on new map
-    this.gameState.player.position = {
-      x: connection.toPosition.x,
-      y: connection.toPosition.y
-    };
-    
-    // Update all party members
-    this.gameState.party.forEach(member => {
-      member.position = {
-        x: connection.toPosition.x,
-        y: connection.toPosition.y
-      };
+      
+      // Create the new map
+      const targetMap = createMapFn();
+      console.log(`Created map: ${targetMap.name} (${targetMap.width}x${targetMap.height})`);
+      
+      // Update game state
+      const newGameState = { ...this.gameState! };
+      
+      // Store current map in available maps if not already there
+      if (!newGameState.availableMaps[currentMap.id]) {
+        newGameState.availableMaps[currentMap.id] = currentMap;
+      }
+      
+      // Set new current map
+      newGameState.currentMap = targetMap;
+      newGameState.availableMaps[targetMapId] = targetMap;
+      
+      // Position player at the correct entrance point
+      newGameState.player.position = { ...connection.toPosition };
+      console.log(`Player positioned at: ${newGameState.player.position.x}, ${newGameState.player.position.y}`);
+      
+      // Reset transition state
+      this.edgeTimer = 0;
+      this.isAtEdge = false;
+      this.currentEdgeDirection = null;
+      
+      // Update the game state
+      this.setGameState(newGameState);
+      if (this.stateChangeCallback) {
+        this.stateChangeCallback(newGameState);
+      }
     });
-    
-    // Initialize visibility map for new map
-    this.initializeVisibilityMap();
-    
-    // Reset camera to follow player
-    this.gameState.camera = {
-      x: this.gameState.player.position.x - this.canvas.width / 2,
-      y: this.gameState.player.position.y - this.canvas.height / 2
-    };
-    
-    // Update visibility around new position
-    this.updateVisibility();
-    
-    // Trigger state change callback
-    if (this.stateChangeCallback) {
-      this.stateChangeCallback({ ...this.gameState });
-    }
-    
-    console.log(`Successfully transitioned to ${connection.targetMapId} at position`, connection.toPosition);
   }
 
   private transitionToMap(mapId: string, position: Position) {
