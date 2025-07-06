@@ -599,6 +599,24 @@ export class GameEngine {
   }
 
   private updateWeather(deltaTime: number) {
+    // Slower weather changes - only change every 2-5 minutes
+    if (Math.random() < 0.0001) { // Much lower chance
+      const weatherTypes = ['clear', 'rain', 'fog'];
+      const currentIndex = weatherTypes.indexOf(this.gameState.weather);
+      let newWeather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
+      
+      // Prefer staying with current weather
+      if (Math.random() < 0.7) {
+        newWeather = this.gameState.weather;
+      }
+      
+      if (newWeather !== this.gameState.weather) {
+        const newState = { ...this.gameState };
+        newState.weather = newWeather as any;
+        this.updateGameState(newState);
+      }
+    }
+    
     // Update weather effects based on current weather
     switch (this.gameState.weather) {
       case 'rain':
@@ -807,6 +825,12 @@ export class GameEngine {
       baseColor = this.darkenColor(baseColor, 0.5);
     }
     
+    // Render buildings properly
+    if (tile.type === 'building') {
+      this.renderBuilding(tile, x, y);
+      return;
+    }
+    
     // Add texture pattern
     if (!this.settings.lowGraphicsMode) {
       this.renderTileTexture(tile.type, x, y, baseColor);
@@ -819,6 +843,45 @@ export class GameEngine {
     if (tile.visible && !this.settings.lowGraphicsMode) {
       this.renderTileDetails(tile, x, y);
     }
+  }
+
+  private renderBuilding(tile: Tile, x: number, y: number) {
+    // Building base
+    this.ctx.fillStyle = '#8B4513'; // Brown building color
+    this.ctx.fillRect(x, y, 32, 32);
+    
+    // Building details
+    if (!this.settings.lowGraphicsMode) {
+      // Windows
+      this.ctx.fillStyle = '#FFD700'; // Golden windows
+      this.ctx.fillRect(x + 4, y + 4, 6, 6);
+      this.ctx.fillRect(x + 22, y + 4, 6, 6);
+      this.ctx.fillRect(x + 4, y + 22, 6, 6);
+      this.ctx.fillRect(x + 22, y + 22, 6, 6);
+      
+      // Door (if it's an entrance)
+      if (tile.isEntrance) {
+        this.ctx.fillStyle = '#654321';
+        this.ctx.fillRect(x + 12, y + 20, 8, 12);
+        
+        // Door handle
+        this.ctx.fillStyle = '#FFD700';
+        this.ctx.fillRect(x + 18, y + 26, 2, 2);
+      }
+      
+      // Building name
+      if (tile.buildingName) {
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = '8px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(tile.buildingName.substring(0, 8), x + 16, y - 2);
+      }
+    }
+    
+    // Building border
+    this.ctx.strokeStyle = '#654321';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x, y, 32, 32);
   }
 
   private renderTileTexture(type: string, x: number, y: number, baseColor: string) {
@@ -1173,9 +1236,9 @@ export class GameEngine {
     
     // Base darkness
     const timeOfDay = this.getTimeOfDay();
-    let darkness = 0.3;
-    if (timeOfDay === 'night') darkness = 0.8;
-    if (timeOfDay === 'dusk' || timeOfDay === 'dawn') darkness = 0.5;
+    let darkness = 0.1; // Much lighter base darkness
+    if (timeOfDay === 'night') darkness = 0.4; // Reduced night darkness
+    if (timeOfDay === 'dusk' || timeOfDay === 'dawn') darkness = 0.2; // Reduced twilight darkness
     
     this.ctx.fillStyle = `rgba(0, 0, 0, ${darkness})`;
     this.ctx.fillRect(
@@ -1189,13 +1252,22 @@ export class GameEngine {
     this.ctx.globalCompositeOperation = 'screen';
     this.lightSources.forEach(light => {
       if (this.isInViewport({ x: light.x, y: light.y })) {
+        // Reduce radiation glow intensity
+        const intensity = light.type === 'radiation' ? light.intensity * 0.3 : light.intensity;
+        
         const gradient = this.ctx.createRadialGradient(
           light.x, light.y, 0,
           light.x, light.y, light.radius
         );
         
-        gradient.addColorStop(0, `rgba(255, 235, 59, ${light.intensity})`);
-        gradient.addColorStop(0.5, `rgba(255, 193, 7, ${light.intensity * 0.5})`);
+        // Use different colors for different light types
+        if (light.type === 'radiation') {
+          gradient.addColorStop(0, `rgba(0, 255, 0, ${intensity * 0.5})`); // Subtle green
+          gradient.addColorStop(0.5, `rgba(0, 200, 0, ${intensity * 0.3})`);
+        } else {
+          gradient.addColorStop(0, `rgba(255, 235, 59, ${intensity})`);
+          gradient.addColorStop(0.5, `rgba(255, 193, 7, ${intensity * 0.5})`);
+        }
         gradient.addColorStop(1, 'rgba(255, 193, 7, 0)');
         
         this.ctx.fillStyle = gradient;
@@ -1358,8 +1430,16 @@ export class GameEngine {
     this.ctx.textAlign = 'left';
     this.ctx.fillText(`Time: ${timeString}`, x + 10, y + 15);
     
-    // Weather
-    this.ctx.fillText(`Weather: ${this.gameState.weather}`, x + 10, y + 30);
+    // Weather with clearer descriptions
+    const weatherDescriptions = {
+      clear: 'Clear Skies',
+      rain: 'Light Rain',
+      storm: 'Heavy Storm',
+      fog: 'Dense Fog',
+      radiation: 'Rad Storm'
+    };
+    const weatherDesc = weatherDescriptions[this.gameState.weather as keyof typeof weatherDescriptions] || this.gameState.weather;
+    this.ctx.fillText(`Weather: ${weatherDesc}`, x + 10, y + 30);
     
     this.ctx.restore();
   }

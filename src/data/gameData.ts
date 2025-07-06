@@ -210,6 +210,8 @@ export const enemyTypes: Enemy[] = [
 // Export npcs from the dedicated npcs file
 export { npcs };
 
+import { backgrounds } from './gameData';
+
 export const createStartingCharacter = (name: string, characterClass: keyof typeof characterClasses): Character => {
   const classData = characterClasses[characterClass];
   const startingSkills = classData.startingSkills
