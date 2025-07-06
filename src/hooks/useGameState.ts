@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { GameState, Character, GameSettings, Item, DialogueChoice, Quest } from '../types/game';
 import { createStartingCharacter, achievements, items, backgrounds } from '../data/gameData';
 import { createAllMaps } from '../data/maps';
-import { maps } from '../data/maps';
 import { allQuests } from '../data/quests';
 import { SaveSystem } from '../engine/SaveSystem';
 
@@ -23,7 +22,6 @@ export const useGameState = () => {
   }, [gameState, settings.autoSave]);
 
   const updateGameState = useCallback((newState: GameState) => {
-    // Avoid deep cloning for performance - just update the reference
     setGameState(newState);
   }, []);
 
@@ -54,8 +52,15 @@ export const useGameState = () => {
       }
     }
     
-    // Only create the starting map initially
-    const startingMap = maps['capital_wasteland']();
+    // Create all maps
+    const allMaps = createAllMaps();
+    const startingMap = allMaps['capital_wasteland'];
+    
+    // Set player starting position (center of map)
+    player.position = { 
+      x: Math.floor(startingMap.width / 2) * 32, 
+      y: Math.floor(startingMap.height / 2) * 32 
+    };
     
     // Add starting items to inventory
     const startingInventory: Item[] = [
@@ -72,15 +77,15 @@ export const useGameState = () => {
       inventory: startingInventory,
       gold: 100,
       currentMap: startingMap,
-      availableMaps: { capital_wasteland: startingMap }, // Keep at least the starting map
-      mapPosition: { x: 25, y: 25 },
+      availableMaps: allMaps,
+      mapPosition: { x: 15, y: 15 },
       camera: { x: 0, y: 0 },
       gameTime: 0,
-      dayNightCycle: 0.5, // Start at noon
+      dayNightCycle: 0.5,
       weather: 'clear',
-      quests: [],
+      quests: [allQuests.find(q => q.id === 'escape_vault_101')!],
       completedQuests: [],
-      discoveredMaps: ['wasteland'],
+      discoveredMaps: ['capital_wasteland'],
       gameMode: 'exploration',
       base: {
         level: 1,
@@ -117,7 +122,6 @@ export const useGameState = () => {
         goldSpent: 0
       },
       visibilityMap: [],
-      quests: [allQuests.find(q => q.id === 'escape_vault_101')!], // Start with the escape quest
       devMode: {
         enabled: false,
         selectedTool: 'quest',
@@ -192,18 +196,12 @@ export const useGameState = () => {
     
     // Handle choice actions
     if (choice.action === 'give_quest' && npc.quests) {
-      // Give quest to player
       npc.quests.forEach(quest => {
         const existingQuest = newState.quests.find(q => q.id === quest.id);
         if (!existingQuest) {
           newState.quests.push({ ...quest, status: 'active' });
         }
       });
-    }
-    
-    if (choice.action === 'open_trade') {
-      // TODO: Implement trading system
-      console.log('Opening trade with', npc.name);
     }
     
     // Move to next dialogue node or end conversation
@@ -221,7 +219,7 @@ export const useGameState = () => {
     }
     
     updateGameState(newState);
-  }, [gameState]);
+  }, [gameState, updateGameState]);
 
   const updateQuestProgress = useCallback((questId: string, objectiveId: string, amount: number = 1) => {
     if (!gameState) return;
@@ -270,69 +268,6 @@ export const useGameState = () => {
     updateGameState(newState);
   }, [gameState, updateGameState]);
 
-  // Auto-update quest progress based on game events
-  useEffect(() => {
-    if (!gameState) return;
-
-    const newState = { ...gameState };
-    let updated = false;
-
-    // Update exploration quest progress
-    const explorationQuest = newState.quests.find(q => q.id === 'first_steps');
-    if (explorationQuest && explorationQuest.status === 'active') {
-      const exploreObjective = explorationQuest.objectives.find(obj => obj.id === 'explore_tiles');
-      if (exploreObjective && !exploreObjective.completed) {
-        const discoveredTiles = newState.currentMap.tiles.flat().filter(tile => tile.discovered).length;
-        if (discoveredTiles > exploreObjective.current) {
-          exploreObjective.current = Math.min(discoveredTiles, exploreObjective.required);
-          if (exploreObjective.current >= exploreObjective.required) {
-            exploreObjective.completed = true;
-          }
-          updated = true;
-        }
-      }
-    }
-
-    // Check if any quest is completed
-    newState.quests.forEach(quest => {
-      if (quest.status === 'active') {
-        const allCompleted = quest.objectives.every(obj => obj.completed);
-        if (allCompleted) {
-          quest.status = 'completed';
-          if (!newState.completedQuests.includes(quest.id)) {
-            newState.completedQuests.push(quest.id);
-          }
-          
-          // Give rewards
-          quest.rewards.forEach(reward => {
-            if (reward.type === 'experience') {
-              newState.player.experience += reward.value;
-              // Check for level up
-              while (newState.player.experience >= newState.player.experienceToNext) {
-                newState.player.experience -= newState.player.experienceToNext;
-                newState.player.level++;
-                newState.player.experienceToNext = newState.player.level * 100;
-                newState.player.maxHealth += 10;
-                newState.player.maxEnergy += 5;
-                newState.player.health = newState.player.maxHealth;
-                newState.player.energy = newState.player.maxEnergy;
-              }
-            } else if (reward.type === 'gold') {
-              newState.gold += reward.value;
-            } else if (reward.type === 'item' && reward.item) {
-              newState.inventory.push({ ...reward.item });
-            }
-          });
-          updated = true;
-        }
-      }
-    });
-
-    if (updated) {
-      updateGameState(newState);
-    }
-  }, [gameState?.currentMap.tiles, gameState?.quests, updateGameState]);
-
   const completeQuest = useCallback((questId: string) => {
     if (!gameState) return;
 
@@ -360,11 +295,10 @@ export const useGameState = () => {
 
   const returnToMenu = useCallback(() => {
     setGameMode('menu');
-    updateGameState(null);
+    setGameState(null);
   }, []);
 
   const quitGame = useCallback(() => {
-    // In a real application, this might close the window or navigate away
     console.log('Quitting game...');
   }, []);
 
