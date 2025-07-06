@@ -12,6 +12,9 @@ export class GameEngine {
   private animationId: number | null = null;
   private stateChangeCallback?: (state: GameState) => void;
   private lootableCallback?: (lootable: LootableItem) => void;
+  private edgeTimer = 0;
+  private currentEdgeDirection: string | null = null;
+  private isAtEdge = false;
   
   // Enhanced graphics properties
   private particleSystem: Particle[] = [];
@@ -408,6 +411,7 @@ export class GameEngine {
     this.updateWeather(deltaTime);
     this.updateDayNightCycle(deltaTime);
     this.updateVisibility();
+    this.checkMapTransition(deltaTime);
     this.updateCameraEffects(deltaTime);
   }
 
@@ -509,6 +513,156 @@ export class GameEngine {
         this.transitionToMap(connection.targetMapId, connection.toPosition);
       }
     }
+  }
+
+  private checkMapTransition(deltaTime: number): void {
+    if (!this.gameState) return;
+    
+    const player = this.gameState.player;
+    const map = this.gameState.currentMap;
+    const tileSize = 32;
+    
+    // Calculate player's tile position
+    const playerTileX = Math.floor(player.position.x / tileSize);
+    const playerTileY = Math.floor(player.position.y / tileSize);
+    
+    // Check if player is at any edge
+    let atEdge = false;
+    let edgeDirection = null;
+    
+    // Check edges with a small buffer (1 tile from edge)
+    if (playerTileX <= 1) {
+      atEdge = true;
+      edgeDirection = 'west';
+    } else if (playerTileX >= map.width - 2) {
+      atEdge = true;
+      edgeDirection = 'east';
+    } else if (playerTileY <= 1) {
+      atEdge = true;
+      edgeDirection = 'north';
+    } else if (playerTileY >= map.height - 2) {
+      atEdge = true;
+      edgeDirection = 'south';
+    }
+    
+    // Check if player is moving in the direction of the edge
+    let movingTowardEdge = false;
+    if (atEdge && edgeDirection) {
+      switch (edgeDirection) {
+        case 'west':
+          movingTowardEdge = this.keys.has('ArrowLeft') || this.keys.has('a') || this.keys.has('A');
+          break;
+        case 'east':
+          movingTowardEdge = this.keys.has('ArrowRight') || this.keys.has('d') || this.keys.has('D');
+          break;
+        case 'north':
+          movingTowardEdge = this.keys.has('ArrowUp') || this.keys.has('w') || this.keys.has('W');
+          break;
+        case 'south':
+          movingTowardEdge = this.keys.has('ArrowDown') || this.keys.has('s') || this.keys.has('S');
+          break;
+      }
+    }
+    
+    // Update edge timer
+    if (atEdge && movingTowardEdge && edgeDirection === this.currentEdgeDirection) {
+      this.edgeTimer += deltaTime;
+      this.isAtEdge = true;
+      
+      // Show transition indicator after 1 second
+      if (this.edgeTimer > 1000) {
+        this.showTransitionIndicator(edgeDirection, this.edgeTimer);
+      }
+      
+      // Trigger transition after 2 seconds
+      if (this.edgeTimer >= 2000) {
+        this.triggerMapTransition(edgeDirection);
+        this.resetEdgeTimer();
+      }
+    } else {
+      // Reset timer if conditions aren't met
+      if (this.currentEdgeDirection !== edgeDirection || !atEdge || !movingTowardEdge) {
+        this.resetEdgeTimer();
+      }
+      this.currentEdgeDirection = edgeDirection;
+      this.isAtEdge = atEdge;
+    }
+  }
+  
+  private resetEdgeTimer(): void {
+    this.edgeTimer = 0;
+    this.currentEdgeDirection = null;
+    this.isAtEdge = false;
+  }
+  
+  private showTransitionIndicator(direction: string, timer: number): void {
+    // This will be rendered in the render method
+    // Just store the state for now
+  }
+  
+  private triggerMapTransition(direction: string): void {
+    if (!this.gameState) return;
+    
+    const currentMap = this.gameState.currentMap;
+    const connection = currentMap.connections.find(conn => conn.direction === direction);
+    
+    if (!connection) {
+      console.log(`No connection found for direction: ${direction}`);
+      return;
+    }
+    
+    console.log(`Transitioning ${direction} to ${connection.targetMapId}`);
+    
+    // Create or get the target map
+    let targetMap = this.gameState.availableMaps[connection.targetMapId];
+    if (!targetMap) {
+      // Create the map if it doesn't exist
+      const { maps } = require('../data/maps');
+      const createMapFn = maps[connection.targetMapId];
+      if (createMapFn) {
+        targetMap = createMapFn();
+        this.gameState.availableMaps[connection.targetMapId] = targetMap;
+      } else {
+        console.error(`No map creator found for: ${connection.targetMapId}`);
+        return;
+      }
+    }
+    
+    // Update game state
+    this.gameState.currentMap = targetMap;
+    
+    // Set player position on new map
+    this.gameState.player.position = {
+      x: connection.toPosition.x,
+      y: connection.toPosition.y
+    };
+    
+    // Update all party members
+    this.gameState.party.forEach(member => {
+      member.position = {
+        x: connection.toPosition.x,
+        y: connection.toPosition.y
+      };
+    });
+    
+    // Initialize visibility map for new map
+    this.initializeVisibilityMap();
+    
+    // Reset camera to follow player
+    this.gameState.camera = {
+      x: this.gameState.player.position.x - this.canvas.width / 2,
+      y: this.gameState.player.position.y - this.canvas.height / 2
+    };
+    
+    // Update visibility around new position
+    this.updateVisibility();
+    
+    // Trigger state change callback
+    if (this.stateChangeCallback) {
+      this.stateChangeCallback({ ...this.gameState });
+    }
+    
+    console.log(`Successfully transitioned to ${connection.targetMapId} at position`, connection.toPosition);
   }
 
   private transitionToMap(mapId: string, position: Position) {
@@ -774,6 +928,7 @@ export class GameEngine {
     
     // Render UI elements (not affected by camera)
     this.renderUI();
+    this.drawTransitionIndicator();
   }
 
   private renderBackground() {
@@ -1382,6 +1537,81 @@ export class GameEngine {
     
     // Render time and weather
     this.renderTimeWeather();
+  }
+
+  private drawTransitionIndicator(): void {
+    if (!this.isAtEdge || this.edgeTimer < 1000) return;
+    
+    const ctx = this.ctx;
+    const progress = Math.min((this.edgeTimer - 1000) / 1000, 1); // 0 to 1 over 1 second
+    
+    // Draw transition indicator
+    ctx.save();
+    
+    // Semi-transparent overlay
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * progress})`;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Direction arrow
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+    const arrowSize = 40 * progress;
+    
+    ctx.fillStyle = `rgba(255, 255, 0, ${progress})`;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${progress})`;
+    ctx.lineWidth = 3;
+    
+    ctx.beginPath();
+    
+    // Draw arrow based on direction
+    switch (this.currentEdgeDirection) {
+      case 'north':
+        ctx.moveTo(centerX, centerY - arrowSize);
+        ctx.lineTo(centerX - arrowSize/2, centerY);
+        ctx.lineTo(centerX + arrowSize/2, centerY);
+        break;
+      case 'south':
+        ctx.moveTo(centerX, centerY + arrowSize);
+        ctx.lineTo(centerX - arrowSize/2, centerY);
+        ctx.lineTo(centerX + arrowSize/2, centerY);
+        break;
+      case 'east':
+        ctx.moveTo(centerX + arrowSize, centerY);
+        ctx.lineTo(centerX, centerY - arrowSize/2);
+        ctx.lineTo(centerX, centerY + arrowSize/2);
+        break;
+      case 'west':
+        ctx.moveTo(centerX - arrowSize, centerY);
+        ctx.lineTo(centerX, centerY - arrowSize/2);
+        ctx.lineTo(centerX, centerY + arrowSize/2);
+        break;
+    }
+    
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
+    // Progress bar
+    const barWidth = 200;
+    const barHeight = 10;
+    const barX = centerX - barWidth / 2;
+    const barY = centerY + 60;
+    
+    // Background
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.5 * progress})`;
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    
+    // Progress
+    ctx.fillStyle = `rgba(255, 255, 0, ${progress})`;
+    ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+    
+    // Text
+    ctx.fillStyle = `rgba(255, 255, 255, ${progress})`;
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Transitioning ${this.currentEdgeDirection}...`, centerX, barY - 10);
+    
+    ctx.restore();
   }
 
   private renderMinimap() {
