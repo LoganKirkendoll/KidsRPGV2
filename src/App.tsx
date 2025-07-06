@@ -26,6 +26,7 @@ function App() {
     gameState,
     settings,
     gameMode,
+    setGameMode,
     createNewGame,
     loadGame,
     saveGame,
