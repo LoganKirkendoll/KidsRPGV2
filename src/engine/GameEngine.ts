@@ -266,9 +266,6 @@ export class GameEngine {
       position: { ...this.gameState.player.position }
     };
     
-    // Initialize visibility map
-    this.initializeVisibilityMap();
-    
     // Switch to building interior
     newState.currentMap = building.interiorMap;
     newState.player.position = { ...building.exitPosition };
@@ -1571,8 +1568,16 @@ export class GameEngine {
   }
 
   public setGameState(newState: GameState) {
-    this.gameState = newState;
-    this.initializeVisibilityMap();
+    this.gameState = { ...newState };
+    
+    // Update camera to follow player
+    this.gameState.camera.x = this.gameState.player.position.x - this.canvas.width / 2;
+    this.gameState.camera.y = this.gameState.player.position.y - this.canvas.height / 2;
+    
+    // Ensure visibility map exists
+    if (!this.gameState.visibilityMap || this.gameState.visibilityMap.length === 0) {
+      this.initializeVisibilityMap();
+    }
   }
 
   public getGameState(): GameState {
