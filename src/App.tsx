@@ -432,7 +432,7 @@ function App() {
 
   const handleIntroComplete = () => {
     setShowIntro(false);
-    setGameMode('character-creation');
+    startNewGame();
   };
 
   // Show intro screen
