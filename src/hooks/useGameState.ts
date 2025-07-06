@@ -347,6 +347,7 @@ export const useGameState = () => {
     gameState,
     settings,
     gameMode,
+    setGameMode,
     createNewGame,
     loadGame,
     saveGame,
