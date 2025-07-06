@@ -19,7 +19,7 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
   const [animationState, setAnimationState] = useState<'idle' | 'attacking' | 'hurt' | 'victory'>('idle');
   const { playMusic, playSfx } = useAudio();
   const [combatText, setCombatText] = useState<string>('');
-  const [showDamage, setShowDamage] = useState<{ amount: number; type: 'damage' | 'heal'; show: boolean }>({ amount: 0, type: 'damage', show: false });
+  const [showDamage, setShowDamage] = useState<{ amount: number; type: 'damage' | 'heal'; show: boolean; target: 'player' | 'enemy' }>({ amount: 0, type: 'damage', show: false, target: 'enemy' });
 
   const currentActor = combatState.turnOrder[combatState.currentTurn];
   const isPlayerTurn = combatState.isPlayerTurn;
@@ -55,10 +55,17 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
       
       // Show damage animation
       if (latestLog.includes('damage')) {
-        const damageMatch = latestLog.match(/(\d+)/);
+        const damageMatch = latestLog.match(/(\d+) damage/);
         if (damageMatch) {
-          setShowDamage({ amount: parseInt(damageMatch[1]), type: 'damage', show: true });
-          setTimeout(() => setShowDamage(prev => ({ ...prev, show: false })), 2000);
+          // Determine if player or enemy is taking damage
+          const isPlayerDamaged = latestLog.includes(player.name) && !latestLog.startsWith(player.name);
+          setShowDamage({ 
+            amount: parseInt(damageMatch[1]), 
+            type: 'damage', 
+            show: true,
+            target: isPlayerDamaged ? 'player' : 'enemy'
+          });
+          setTimeout(() => setShowDamage(prev => ({ ...prev, show: false })), 1500);
         }
         playSfx('/assets/audio/hit.mp3', 0.4);
       }
@@ -156,7 +163,7 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
               </div>
               
               {/* Damage number animation */}
-              {showDamage.show && (
+              {showDamage.show && showDamage.target === 'enemy' && (
                 <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 animate-bounce">
                   <span className={`text-2xl font-bold ${showDamage.type === 'damage' ? 'text-red-400' : 'text-green-400'}`}>
                     {showDamage.type === 'damage' ? '-' : '+'}{showDamage.amount}
@@ -187,6 +194,15 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
                    player.class === 'ranger' ? '🏹' :
                    player.class === 'medic' ? '🏥' : '🔧'}
                 </div>
+                
+                {/* Damage number animation for player */}
+                {showDamage.show && showDamage.target === 'player' && (
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+                    <span className={`text-2xl font-bold ${showDamage.type === 'damage' ? 'text-red-400' : 'text-green-400'}`}>
+                      {showDamage.type === 'damage' ? '-' : '+'}{showDamage.amount}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -211,21 +211,17 @@ export const createCapitalWasteland = (): GameMap => {
   for (let y = 0; y < height; y++) {
     const row: Tile[] = [];
     for (let x = 0; x < width; x++) {
-      row.push(createTile(x, y, 'grass', true));
-    }
-    tiles.push(row);
-  }
-  
-  // Add some natural variation
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
+      // Add more terrain variation
       const random = Math.random();
-      if (random < 0.15) {
-        tiles[y][x] = createTile(x, y, 'dirt', true);
-      } else if (random < 0.2) {
-        tiles[y][x] = createTile(x, y, 'stone', true);
+      if (random < 0.7) {
+        row.push(createTile(x, y, 'grass', true));
+      } else if (random < 0.85) {
+        row.push(createTile(x, y, 'dirt', true));
+      } else {
+        row.push(createTile(x, y, 'stone', true));
       }
     }
+    tiles.push(row);
   }
   
   // Add water features (small ponds)

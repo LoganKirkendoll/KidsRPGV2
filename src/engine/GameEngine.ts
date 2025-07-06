@@ -568,6 +568,151 @@ export class GameEngine {
     this.notifyStateChange();
   }
 
+  private performAttack(attacker: Character | Enemy, target: Character | Enemy) {
+    if (!this.gameState.combat) return;
+    
+    // Calculate base damage
+    let baseDamage = 10;
+    if ('damage' in attacker) {
+      baseDamage = attacker.damage;
+    } else if ('stats' in attacker && attacker.stats.strength) {
+      // For player characters, calculate damage based on strength
+      baseDamage = Math.floor(attacker.stats.strength * 1.5);
+    }
+    
+    // Add weapon damage for characters
+    let attackerDamage = baseDamage;
+    if ('equipment' in attacker && attacker.equipment.weapon?.stats?.damage) {
+      attackerDamage += attacker.equipment.weapon.stats.damage;
+    }
+    
+    const targetDefense = 'defense' in target ? target.defense : 0;
+    const equipmentDefense = 'equipment' in target && target.equipment.armor?.stats?.defense 
+      ? target.equipment.armor.stats.defense 
+      : 0;
+    
+    const totalDefense = targetDefense + equipmentDefense;
+    const finalDamage = Math.max(1, attackerDamage - totalDefense);
+    
+    // Apply damage
+    target.health = Math.max(0, target.health - finalDamage);
+    
+    // Update statistics
+    if ('class' in attacker) {
+      this.gameState.statistics.damageDealt += finalDamage;
+    } else if ('class' in target) {
+      this.gameState.statistics.damageTaken += finalDamage;
+    }
+    
+    // Add to combat log
+    const attackerName = 'name' in attacker ? attacker.name : 'Enemy';
+    const targetName = 'name' in target ? target.name : 'Enemy';
+    this.gameState.combat.combatLog.push(`${attackerName} attacks ${targetName} for ${finalDamage} damage!`);
+    
+    // Check if target is defeated
+    if (target.health <= 0) {
+      this.gameState.combat.combatLog.push(`${targetName} is defeated!`);
+      
+      // Remove from participants
+      const index = this.gameState.combat.participants.indexOf(target);
+      if (index > -1) {
+        this.gameState.combat.participants.splice(index, 1);
+        this.gameState.combat.turnOrder = this.gameState.combat.turnOrder.filter(p => p !== target);
+        
+        // Adjust current turn if necessary
+        if (this.gameState.combat.currentTurn >= this.gameState.combat.turnOrder.length) {
+          this.gameState.combat.currentTurn = 0;
+        }
+      }
+      
+      // Award experience if player defeated enemy
+      if ('class' in attacker && 'damage' in target) {
+        const expGain = Math.floor(target.level * 10);
+        this.gameState.player.experience += expGain;
+        this.gameState.combat.combatLog.push(`${attackerName} gains ${expGain} experience!`);
+        
+        // Check for level up
+        if (this.gameState.player.experience >= this.gameState.player.experienceToNext) {
+          this.levelUpPlayer();
+        }
+      }
+    }
+  }
+
+  private performSkill(attacker: Character | Enemy, target: Character | Enemy, skill: any) {
+    if (!this.gameState.combat) return;
+    
+    // Apply skill effects
+    if (skill.damage) {
+      const finalDamage = Math.max(1, skill.damage);
+      
+      // Apply damage
+      target.health = Math.max(0, target.health - finalDamage);
+      
+      // Update statistics
+      if ('class' in attacker) {
+        this.gameState.statistics.damageDealt += finalDamage;
+      } else if ('class' in target) {
+        this.gameState.statistics.damageTaken += finalDamage;
+      }
+      
+      const attackerName = 'name' in attacker ? attacker.name : 'Enemy';
+      const targetName = 'name' in target ? target.name : 'Enemy';
+      this.gameState.combat.combatLog.push(`${attackerName} uses ${skill.name} on ${targetName} for ${finalDamage} damage!`);
+    }
+    
+    if (skill.healing) {
+      const healAmount = skill.healing;
+      target.health = Math.min(target.maxHealth, target.health + healAmount);
+
+      // Update statistics
+      if ('class' in attacker) {
+        this.gameState.statistics.healingDone += healAmount;
+      }
+      
+      const attackerName = 'name' in attacker ? attacker.name : 'Enemy';
+      const targetName = 'name' in target ? target.name : 'Enemy';
+      this.gameState.combat.combatLog.push(`${attackerName} heals ${targetName} for ${healAmount} health!`);
+    }
+    
+    // Apply status effects
+    if (skill.statusEffects) {
+      skill.statusEffects.forEach((effect: any) => {
+        if (!target.statusEffects) target.statusEffects = [];
+        target.statusEffects.push({
+          ...effect,
+          remainingTurns: effect.duration
+        });
+        
+        const attackerName = 'name' in attacker ? attacker.name : 'Enemy';
+        const targetName = 'name' in target ? target.name : 'Enemy';
+        this.gameState.combat.combatLog.push(`${targetName} is affected by ${effect.name}!`);
+      });
+    }
+  }
+
+  private levelUpPlayer() {
+    this.gameState.player.level++;
+    this.gameState.player.experience = 0;
+    this.gameState.player.experienceToNext = this.gameState.player.level * 100;
+    
+    // Increase stats
+    this.gameState.player.maxHealth += 10;
+    this.gameState.player.health = this.gameState.player.maxHealth;
+    this.gameState.player.maxEnergy += 5;
+    this.gameState.player.energy = this.gameState.player.maxEnergy;
+    
+    // Increase base stats
+    this.gameState.player.stats.strength += 2;
+    this.gameState.player.stats.agility += 1;
+    this.gameState.player.stats.intelligence += 1;
+    this.gameState.player.stats.endurance += 2;
+    
+    if (this.gameState.combat) {
+      this.gameState.combat.combatLog.push(`${this.gameState.player.name} reached level ${this.gameState.player.level}!`);
+    }
+  }
+
   private updatePlayerMovement(deltaTime: number) {
     if (this.gameState.gameMode !== 'exploration') return;
     if (this.isTransitioning) return;
