@@ -117,8 +117,8 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
               <div className="flex items-center gap-2 mb-2">
                 <Heart className="w-4 h-4 text-red-400" />
                 <div className="w-48 h-3 bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full bg-gradient-to-r ${getHealthBarColor(getHealthPercentage(enemy.health, enemy.maxHealth))} transition-all duration-500`}
+                  <div
+                    className={`h-full bg-gradient-to-r ${getHealthBarColor(getHealthPercentage(enemy.health, enemy.maxHealth))} transition-all duration-500 shadow`}
                     style={{ width: `${getHealthPercentage(enemy.health, enemy.maxHealth)}%` }}
                   />
                 </div>
@@ -188,8 +188,8 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
               <div className="flex items-center gap-2 mb-2">
                 <Heart className="w-4 h-4 text-red-400" />
                 <div className="w-48 h-3 bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full bg-gradient-to-r ${getHealthBarColor(getHealthPercentage(player.health, player.maxHealth))} transition-all duration-500`}
+                  <div
+                    className={`h-full bg-gradient-to-r ${getHealthBarColor(getHealthPercentage(player.health, player.maxHealth))} transition-all duration-500 shadow`}
                     style={{ width: `${getHealthPercentage(player.health, player.maxHealth)}%` }}
                   />
                 </div>
@@ -198,8 +198,8 @@ const PokemonStyleCombat: React.FC<PokemonStyleCombatProps> = ({
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-blue-400" />
                 <div className="w-48 h-3 bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500 shadow"
                     style={{ width: `${getHealthPercentage(player.energy, player.maxEnergy)}%` }}
                   />
                 </div>

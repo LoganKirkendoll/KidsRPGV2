@@ -665,21 +665,23 @@ function App() {
           )}
           
           {/* Instructions */}
-          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white p-4 rounded-lg max-w-md border border-gray-600">
-            <h3 className="font-bold mb-2">Controls:</h3>
-            <div className="text-sm space-y-1">
-              <div>• Arrow Keys / WASD: Move</div>
-              <div>• Space: Interact with NPCs/Enemies</div>
-              <div>• F/Space: Enter Buildings / Interact</div>
+          <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm text-white p-4 rounded-lg border border-gray-600 transform transition-all hover:scale-105">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
+              <h3 className="font-bold">Controls</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <div>• WASD / Arrows: Move</div>
+              <div>• Space: Interact</div>
               <div>• I: Inventory</div>
               <div>• E: Equipment</div>
-              <div>• M: Map</div>
-              <div>• C: Character Sheet</div>
+              <div>• C: Character</div>
               <div>• Q: Quests</div>
+              <div>• M: Map</div>
               <div>• F1: Dev Mode</div>
               <div>• ESC: Menu</div>
               {gameState.currentMap.isInterior && (
-                <div className="text-yellow-400 font-bold">• ESC: Exit Building</div>
+                <div className="text-yellow-400 font-bold col-span-2">• ESC: Exit Building</div>
               )}
             </div>
           </div>
