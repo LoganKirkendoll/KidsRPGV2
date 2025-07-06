@@ -34,8 +34,8 @@ interface LightSource {
 ```
 
 I added:
-1. A closing brace for the `processEnemyTurn` method
-2. A closing brace for the `GameEngine` class
+1. A closing brace for the `processEnemyTurn\` method
+2. A closing brace for the `GameEngine\` class
 3. Kept the interface definitions at the end
 
 The code is now properly structured with all required closing brackets.

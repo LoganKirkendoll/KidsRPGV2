@@ -150,7 +150,7 @@ export const useGameState = () => {
         combatMusic.loop = true;
         combatMusic.volume = 0.4;
         combatMusic.play().catch(e => console.log("Audio play failed:", e));
-    }
+          }
       
       // Process combat action
       if (engine) {
@@ -165,6 +165,7 @@ export const useGameState = () => {
         
         engine.handleCombatAction(combatAction, targetIndex);
       }
+    }
     return false;
   }, [gameState?.combat, combatMusic]);
 
