@@ -719,6 +719,13 @@ export class GameEngine {
 
         this.ctx.fillStyle = color;
         this.ctx.fillRect(screenX, screenY, 32, 32);
+        
+        // Add borders for interior maps to show structure
+        if (this.gameState.currentMap.isInterior) {
+          this.ctx.strokeStyle = '#000000';
+          this.ctx.lineWidth = 1;
+          this.ctx.strokeRect(screenX, screenY, 32, 32);
+        }
       }
     }
     
@@ -792,16 +799,28 @@ export class GameEngine {
     this.visibleTileCache = {};
     this.lastCameraPosition = { x: -1, y: -1 };
     
-    // Force discovery of all interior tiles since it's a small enclosed space
-    for (let y = 0; y < this.gameState.currentMap.tiles.length; y++) {
-      for (let x = 0; x < this.gameState.currentMap.tiles[y].length; x++) {
-        this.gameState.currentMap.tiles[y][x].discovered = true;
-        this.gameState.currentMap.tiles[y][x].visible = true;
+    // Initialize visibility map for interior
+    const mapHeight = this.gameState.currentMap.tiles.length;
+    const mapWidth = this.gameState.currentMap.tiles[0]?.length || 0;
+    
+    this.gameState.visibilityMap = Array(mapHeight)
+      .fill(null)
+      .map(() => Array(mapWidth).fill(false));
+    
+    // Force discovery and visibility of all interior tiles since it's a small enclosed space
+    for (let y = 0; y < mapHeight; y++) {
+      for (let x = 0; x < mapWidth; x++) {
+        if (this.gameState.currentMap.tiles[y] && this.gameState.currentMap.tiles[y][x]) {
+          this.gameState.currentMap.tiles[y][x].discovered = true;
+          this.gameState.currentMap.tiles[y][x].visible = true;
+          this.gameState.visibilityMap[y][x] = true;
+        }
       }
     }
     
     this.updateCamera();
     this.updateVisibility();
+    this.cacheInvalidated = true;
     this.notifyStateChange();
   }
   
@@ -816,6 +835,7 @@ export class GameEngine {
     // Clear caches for map change
     this.visibleTileCache = {};
     this.lastCameraPosition = { x: -1, y: -1 };
+    this.cacheInvalidated = true;
     
     this.updateCamera();
     this.updateVisibility();
@@ -917,6 +937,7 @@ export class GameEngine {
       case 'sand': return '#f4a460';
       case 'ruins': return '#2f2f2f';
       case 'building': return '#654321';
+      case 'furniture': return '#8B4513'; // Brown color for furniture
       default: return '#333333';
     }
   }

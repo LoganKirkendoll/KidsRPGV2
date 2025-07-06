@@ -206,7 +206,7 @@ export interface AIBehavior {
 export interface Tile {
   x: number;
   y: number;
-  type: 'grass' | 'dirt' | 'stone' | 'water' | 'lava' | 'ice' | 'sand' | 'ruins' | 'building';
+  type: 'grass' | 'dirt' | 'stone' | 'water' | 'lava' | 'ice' | 'sand' | 'ruins' | 'building' | 'furniture';
   walkable: boolean;
   sprite: string;
   hasEnemy?: boolean;

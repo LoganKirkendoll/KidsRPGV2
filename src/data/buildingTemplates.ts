@@ -61,13 +61,13 @@ export const generalStoreTemplate: BuildingTemplate = {
   wallType: 'building',
   entrancePositions: [{ x: 6, y: 9 }],
   furnitureLayout: [
-    { position: { x: 3, y: 3 }, type: 'building', walkable: false }, // Counter
-    { position: { x: 4, y: 3 }, type: 'building', walkable: false },
-    { position: { x: 5, y: 3 }, type: 'building', walkable: false },
-    { position: { x: 8, y: 2 }, type: 'building', walkable: false }, // Shelves
-    { position: { x: 9, y: 2 }, type: 'building', walkable: false },
-    { position: { x: 8, y: 7 }, type: 'building', walkable: false },
-    { position: { x: 9, y: 7 }, type: 'building', walkable: false }
+    { position: { x: 3, y: 3 }, type: 'furniture', walkable: false }, // Counter
+    { position: { x: 4, y: 3 }, type: 'furniture', walkable: false },
+    { position: { x: 5, y: 3 }, type: 'furniture', walkable: false },
+    { position: { x: 8, y: 2 }, type: 'furniture', walkable: false }, // Shelves
+    { position: { x: 9, y: 2 }, type: 'furniture', walkable: false },
+    { position: { x: 8, y: 7 }, type: 'furniture', walkable: false },
+    { position: { x: 9, y: 7 }, type: 'furniture', walkable: false }
   ],
   npcTemplates: [
     {
@@ -115,12 +115,12 @@ export const clinicTemplate: BuildingTemplate = {
   wallType: 'building',
   entrancePositions: [{ x: 7, y: 9 }],
   furnitureLayout: [
-    { position: { x: 2, y: 2 }, type: 'building', walkable: false }, // Medical bed
-    { position: { x: 3, y: 2 }, type: 'building', walkable: false },
-    { position: { x: 10, y: 2 }, type: 'building', walkable: false }, // Medicine cabinet
-    { position: { x: 11, y: 2 }, type: 'building', walkable: false },
-    { position: { x: 6, y: 5 }, type: 'building', walkable: false }, // Desk
-    { position: { x: 7, y: 5 }, type: 'building', walkable: false }
+    { position: { x: 2, y: 2 }, type: 'furniture', walkable: false }, // Medical bed
+    { position: { x: 3, y: 2 }, type: 'furniture', walkable: false },
+    { position: { x: 10, y: 2 }, type: 'furniture', walkable: false }, // Medicine cabinet
+    { position: { x: 11, y: 2 }, type: 'furniture', walkable: false },
+    { position: { x: 6, y: 5 }, type: 'furniture', walkable: false }, // Desk
+    { position: { x: 7, y: 5 }, type: 'furniture', walkable: false }
   ],
   npcTemplates: [
     {
@@ -170,15 +170,15 @@ export const weaponShopTemplate: BuildingTemplate = {
   wallType: 'building',
   entrancePositions: [{ x: 7, y: 11 }],
   furnitureLayout: [
-    { position: { x: 4, y: 4 }, type: 'building', walkable: false }, // Counter
-    { position: { x: 5, y: 4 }, type: 'building', walkable: false },
-    { position: { x: 6, y: 4 }, type: 'building', walkable: false },
-    { position: { x: 2, y: 2 }, type: 'building', walkable: false }, // Weapon racks
-    { position: { x: 2, y: 3 }, type: 'building', walkable: false },
-    { position: { x: 12, y: 2 }, type: 'building', walkable: false },
-    { position: { x: 12, y: 3 }, type: 'building', walkable: false },
-    { position: { x: 8, y: 8 }, type: 'building', walkable: false }, // Workbench
-    { position: { x: 9, y: 8 }, type: 'building', walkable: false }
+    { position: { x: 4, y: 4 }, type: 'furniture', walkable: false }, // Counter
+    { position: { x: 5, y: 4 }, type: 'furniture', walkable: false },
+    { position: { x: 6, y: 4 }, type: 'furniture', walkable: false },
+    { position: { x: 2, y: 2 }, type: 'furniture', walkable: false }, // Weapon racks
+    { position: { x: 2, y: 3 }, type: 'furniture', walkable: false },
+    { position: { x: 12, y: 2 }, type: 'furniture', walkable: false },
+    { position: { x: 12, y: 3 }, type: 'furniture', walkable: false },
+    { position: { x: 8, y: 8 }, type: 'furniture', walkable: false }, // Workbench
+    { position: { x: 9, y: 8 }, type: 'furniture', walkable: false }
   ],
   npcTemplates: [
     {
@@ -237,16 +237,16 @@ export const tavernTemplate: BuildingTemplate = {
   entrancePositions: [{ x: 9, y: 13 }],
   furnitureLayout: [
     // Bar counter
-    { position: { x: 6, y: 4 }, type: 'building', walkable: false },
-    { position: { x: 7, y: 4 }, type: 'building', walkable: false },
-    { position: { x: 8, y: 4 }, type: 'building', walkable: false },
-    { position: { x: 9, y: 4 }, type: 'building', walkable: false },
-    { position: { x: 10, y: 4 }, type: 'building', walkable: false },
+    { position: { x: 6, y: 4 }, type: 'furniture', walkable: false },
+    { position: { x: 7, y: 4 }, type: 'furniture', walkable: false },
+    { position: { x: 8, y: 4 }, type: 'furniture', walkable: false },
+    { position: { x: 9, y: 4 }, type: 'furniture', walkable: false },
+    { position: { x: 10, y: 4 }, type: 'furniture', walkable: false },
     // Tables
-    { position: { x: 3, y: 7 }, type: 'building', walkable: false },
-    { position: { x: 13, y: 7 }, type: 'building', walkable: false },
-    { position: { x: 3, y: 10 }, type: 'building', walkable: false },
-    { position: { x: 13, y: 10 }, type: 'building', walkable: false }
+    { position: { x: 3, y: 7 }, type: 'furniture', walkable: false },
+    { position: { x: 13, y: 7 }, type: 'furniture', walkable: false },
+    { position: { x: 3, y: 10 }, type: 'furniture', walkable: false },
+    { position: { x: 13, y: 10 }, type: 'furniture', walkable: false }
   ],
   npcTemplates: [
     {
@@ -325,10 +325,10 @@ export const securityOfficeTemplate: BuildingTemplate = {
   wallType: 'building',
   entrancePositions: [{ x: 6, y: 7 }],
   furnitureLayout: [
-    { position: { x: 3, y: 3 }, type: 'building', walkable: false }, // Desk
-    { position: { x: 4, y: 3 }, type: 'building', walkable: false },
-    { position: { x: 8, y: 2 }, type: 'building', walkable: false }, // Locker
-    { position: { x: 9, y: 2 }, type: 'building', walkable: false }
+    { position: { x: 3, y: 3 }, type: 'furniture', walkable: false }, // Desk
+    { position: { x: 4, y: 3 }, type: 'furniture', walkable: false },
+    { position: { x: 8, y: 2 }, type: 'furniture', walkable: false }, // Locker
+    { position: { x: 9, y: 2 }, type: 'furniture', walkable: false }
   ],
   npcTemplates: [
     {
@@ -394,35 +394,35 @@ export function createBuildingFromTemplate(
   for (let y = 0; y < template.height; y++) {
     const row: Tile[] = [];
     for (let x = 0; x < template.width; x++) {
-      row.push(createTile(x, y, 'stone', true));
+      row.push(createTile(x, y, template.floorType, true));
     }
     tiles.push(row);
   }
   
   // Add walls around perimeter
   for (let x = 0; x < template.width; x++) {
-    tiles[0][x] = createTile(x, 0, 'ruins', false);
-    tiles[template.height - 1][x] = createTile(x, template.height - 1, 'ruins', false);
+    tiles[0][x] = createTile(x, 0, template.wallType, false);
+    tiles[template.height - 1][x] = createTile(x, template.height - 1, template.wallType, false);
   }
   for (let y = 0; y < template.height; y++) {
-    tiles[y][0] = createTile(0, y, 'ruins', false);
-    tiles[y][template.width - 1] = createTile(template.width - 1, y, 'ruins', false);
+    tiles[y][0] = createTile(0, y, template.wallType, false);
+    tiles[y][template.width - 1] = createTile(template.width - 1, y, template.wallType, false);
   }
   
   // Add entrances
   template.entrancePositions.forEach(entrance => {
-    tiles[entrance.y][entrance.x] = createTile(entrance.x, entrance.y, 'stone', true);
+    tiles[entrance.y][entrance.x] = createTile(entrance.x, entrance.y, template.floorType, true);
     tiles[entrance.y][entrance.x].isEntrance = true;
   });
   
   // Add furniture
   template.furnitureLayout.forEach(furniture => {
-    if (furniture.type === 'building') {
-      // Use dirt for furniture/obstacles
+    if (furniture.type === 'furniture') {
+      // Use a different tile type for furniture/obstacles
       tiles[furniture.position.y][furniture.position.x] = createTile(
         furniture.position.x, 
         furniture.position.y, 
-        'dirt', 
+        'ruins', // Use ruins to represent furniture/obstacles
         furniture.walkable
       );
     } else {
