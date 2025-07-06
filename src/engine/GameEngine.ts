@@ -266,6 +266,9 @@ export class GameEngine {
       position: { ...this.gameState.player.position }
     };
     
+    // Initialize visibility map
+    this.initializeVisibilityMap();
+    
     // Switch to building interior
     newState.currentMap = building.interiorMap;
     newState.player.position = { ...building.exitPosition };
