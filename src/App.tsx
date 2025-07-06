@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameState } from './hooks/useGameState';
 import MainMenu from './components/UI/MainMenu';
+import IntroSequence from './components/IntroSequence';
 import CharacterCreation from './components/UI/CharacterCreation';
 import GameCanvas from './components/GameCanvas';
+import GameHUD from './components/GameHUD';
+import PokemonStyleCombat from './components/PokemonStyleCombat';
 import { GameEngine } from './engine/GameEngine';
 import InventoryScreen from './components/InventoryScreen';
 import EquipmentScreen from './components/EquipmentScreen';
@@ -43,6 +46,7 @@ function App() {
   const [tradingNPC, setTradingNPC] = useState<any>(null);
   const [showGameOver, setShowGameOver] = useState(false);
   const engineRef = useRef<GameEngine | null>(null);
+  const [showIntro, setShowIntro] = useState(false);
 
   // Listen for lootable events from the game engine
   useEffect(() => {
@@ -418,14 +422,28 @@ function App() {
   const handleGameOverMainMenu = () => {
     setShowGameOver(false);
     setGameMode('menu');
-    setGameState(null);
+    updateGameState(null);
   };
+
+  const handleStartNewGame = () => {
+    setShowIntro(true);
+  };
+
+  const handleIntroComplete = () => {
+    setShowIntro(false);
+    setGameMode('character-creation');
+  };
+
+  // Show intro screen
+  if (showIntro) {
+    return <IntroSequence onComplete={handleIntroComplete} />;
+  }
 
   switch (gameMode) {
     case 'menu':
       return (
         <MainMenu
-          onNewGame={startNewGame}
+          onNewGame={handleStartNewGame}
           onLoadGame={loadGame}
           onSettings={handleSettings}
           onQuit={quitGame}
@@ -537,7 +555,7 @@ function App() {
 
       if (gameState.gameMode === 'combat' && gameState.combat) {
         return (
-          <CombatScreen
+          <PokemonStyleCombat
             combatState={gameState.combat}
             onAction={handleCombatAction}
             onEndCombat={handleEndCombat}
@@ -547,6 +565,42 @@ function App() {
 
       return (
         <div className="relative">
+          {/* Game HUD */}
+          <GameHUD
+            player={gameState.player}
+            gold={gameState.gold}
+            gameTime={gameState.gameTime}
+            dayNightCycle={gameState.dayNightCycle}
+            weather={gameState.weather}
+            onOpenInventory={() => {
+              const newState = { ...gameState };
+              newState.gameMode = 'inventory';
+              updateGameState(newState);
+            }}
+            onOpenEquipment={() => {
+              const newState = { ...gameState };
+              newState.gameMode = 'equipment';
+              updateGameState(newState);
+            }}
+            onOpenCharacter={() => {
+              const newState = { ...gameState };
+              newState.gameMode = 'character';
+              updateGameState(newState);
+            }}
+            onOpenQuests={() => {
+              const newState = { ...gameState };
+              newState.gameMode = 'quests';
+              updateGameState(newState);
+            }}
+            onOpenMap={() => {
+              const newState = { ...gameState };
+              newState.gameMode = 'map';
+              updateGameState(newState);
+            }}
+            onSave={() => saveGame(1)}
+            onMenu={returnToMenu}
+          />
+          
           <GameCanvas
             gameState={gameState}
             settings={settings}
@@ -609,74 +663,8 @@ function App() {
             />
           )}
           
-          {/* Game UI Overlay */}
-          <div className="absolute top-4 right-4 space-y-2">
-            <button
-              onClick={() => {
-                const newState = { ...gameState };
-                newState.gameMode = 'inventory';
-                updateGameState(newState);
-              }}
-              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 transition-all block"
-            >
-              Inventory (I)
-            </button>
-            <button
-              onClick={() => {
-                const newState = { ...gameState };
-                newState.gameMode = 'equipment';
-                updateGameState(newState);
-              }}
-              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 transition-all block"
-            >
-              Equipment (E)
-            </button>
-            <button
-              onClick={() => {
-                const newState = { ...gameState };
-                newState.gameMode = 'character';
-                updateGameState(newState);
-              }}
-              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 transition-all block"
-            >
-              Character (C)
-            </button>
-            <button
-              onClick={() => {
-                const newState = { ...gameState };
-                newState.gameMode = 'quests';
-                updateGameState(newState);
-              }}
-              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 transition-all block"
-            >
-              Quests (Q)
-            </button>
-            <button
-              onClick={() => {
-                const newState = { ...gameState };
-                newState.gameMode = 'map';
-                updateGameState(newState);
-              }}
-              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 transition-all block"
-            >
-              Map (M)
-            </button>
-            <button
-              onClick={() => saveGame(1)}
-              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 transition-all block"
-            >
-              Quick Save
-            </button>
-            <button
-              onClick={returnToMenu}
-              className="bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded-lg border border-red-600 transition-all block"
-            >
-              Main Menu
-            </button>
-          </div>
-          
           {/* Instructions */}
-          <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white p-4 rounded-lg max-w-md">
+          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white p-4 rounded-lg max-w-md border border-gray-600">
             <h3 className="font-bold mb-2">Controls:</h3>
             <div className="text-sm space-y-1">
               <div>• Arrow Keys / WASD: Move</div>
