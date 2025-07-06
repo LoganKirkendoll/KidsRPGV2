@@ -342,7 +342,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onLoadGame, onSettings, 
         <div className="space-y-4 max-w-md mx-auto">
           <button
             onClick={onNewGame}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg transform hover:scale-105"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg transition-all duration-200 flex items-center justify-center gap-3 text-lg"
           >
             <Play className="w-6 h-6" />
             New Game
