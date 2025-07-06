@@ -70,7 +70,9 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
   }, [currentScene, onComplete]);
 
   const handleSkip = () => {
-    onComplete();
+    if (canSkip) {
+      onComplete();
+    }
   };
 
   return (
@@ -148,7 +150,7 @@ const IntroSequence: React.FC<IntroSequenceProps> = ({ onComplete }) => {
       {/* Skip button */}
       {canSkip && (
         <button
-          onClick={handleSkip}
+          onClick={() => onComplete()}
           className="fixed bottom-8 right-8 bg-black bg-opacity-70 hover:bg-opacity-90 text-white px-6 py-3 rounded-lg transition-all duration-300 flex items-center gap-2 border border-gray-600 backdrop-blur-sm"
         >
           <SkipForward className="w-5 h-5" />
