@@ -76,34 +76,50 @@ export class GameEngine {
 
   private createTileSprites() {
     const tileSize = 32;
-    
-    // Grass tile with texture
+
+    // Grass tile with improved texture
     const grassCanvas = document.createElement('canvas');
     grassCanvas.width = grassCanvas.height = tileSize;
     const grassCtx = grassCanvas.getContext('2d')!;
-    
-    // Base grass color
-    grassCtx.fillStyle = '#4a7c59';
+
+    // Base grass color with gradient
+    const grassGradient = grassCtx.createLinearGradient(0, 0, tileSize, tileSize);
+    grassGradient.addColorStop(0, '#4a7c59');
+    grassGradient.addColorStop(0.5, '#5a8c69');
+    grassGradient.addColorStop(1, '#4a7c59');
+    grassCtx.fillStyle = grassGradient;
     grassCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Add grass texture
-    for (let i = 0; i < 20; i++) {
-      grassCtx.fillStyle = `rgba(${60 + Math.random() * 40}, ${120 + Math.random() * 40}, ${70 + Math.random() * 30}, 0.6)`;
-      grassCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 2, 4);
+
+    // Add grass blades with better detail
+    for (let i = 0; i < 30; i++) {
+      const x = Math.random() * tileSize;
+      const y = Math.random() * tileSize;
+      grassCtx.fillStyle = `rgba(${60 + Math.random() * 50}, ${130 + Math.random() * 50}, ${70 + Math.random() * 40}, ${0.4 + Math.random() * 0.4})`;
+      grassCtx.fillRect(x, y, 1 + Math.random(), 3 + Math.random() * 3);
+    }
+
+    // Add subtle highlights
+    for (let i = 0; i < 10; i++) {
+      grassCtx.fillStyle = `rgba(180, 220, 190, ${0.1 + Math.random() * 0.2})`;
+      grassCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 2, 2);
     }
     this.tileSprites['grass'] = grassCanvas;
 
-    // Stone tile with brick pattern
+    // Stone tile with improved brick pattern
     const stoneCanvas = document.createElement('canvas');
     stoneCanvas.width = stoneCanvas.height = tileSize;
     const stoneCtx = stoneCanvas.getContext('2d')!;
-    
-    stoneCtx.fillStyle = '#696969';
+
+    // Base stone with gradient
+    const stoneGradient = stoneCtx.createRadialGradient(tileSize/2, tileSize/2, 0, tileSize/2, tileSize/2, tileSize);
+    stoneGradient.addColorStop(0, '#787878');
+    stoneGradient.addColorStop(1, '#5a5a5a');
+    stoneCtx.fillStyle = stoneGradient;
     stoneCtx.fillRect(0, 0, tileSize, tileSize);
-    
-    // Brick pattern
-    stoneCtx.strokeStyle = '#555555';
-    stoneCtx.lineWidth = 1;
+
+    // Brick pattern with depth
+    stoneCtx.strokeStyle = '#404040';
+    stoneCtx.lineWidth = 2;
     for (let y = 0; y < tileSize; y += 8) {
       stoneCtx.beginPath();
       stoneCtx.moveTo(0, y);
@@ -115,6 +131,12 @@ export class GameEngine {
       stoneCtx.moveTo(x, 0);
       stoneCtx.lineTo(x, tileSize);
       stoneCtx.stroke();
+    }
+
+    // Add stone texture noise
+    for (let i = 0; i < 40; i++) {
+      stoneCtx.fillStyle = `rgba(${100 + Math.random() * 40}, ${100 + Math.random() * 40}, ${100 + Math.random() * 40}, 0.3)`;
+      stoneCtx.fillRect(Math.random() * tileSize, Math.random() * tileSize, 1, 1);
     }
     this.tileSprites['stone'] = stoneCanvas;
 
@@ -223,31 +245,56 @@ export class GameEngine {
   }
 
   private createCharacterSprites() {
-    const spriteSize = 24;
-    
-    // Player sprite
+    const spriteSize = 32;
+
+    // Enhanced Player sprite with better detail
     const playerCanvas = document.createElement('canvas');
     playerCanvas.width = playerCanvas.height = spriteSize;
     const playerCtx = playerCanvas.getContext('2d')!;
-    
-    // Body
+
+    // Shadow
+    playerCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    playerCtx.ellipse(spriteSize/2, spriteSize - 4, 8, 3, 0, 0, Math.PI * 2);
+    playerCtx.fill();
+
+    // Body with gradient
+    const bodyGradient = playerCtx.createLinearGradient(0, 10, 0, 26);
+    bodyGradient.addColorStop(0, '#5aa3ff');
+    bodyGradient.addColorStop(1, '#3a83df');
+    playerCtx.fillStyle = bodyGradient;
+    playerCtx.fillRect(10, 12, 12, 14);
+
+    // Head with shading
+    const headGradient = playerCtx.createRadialGradient(16, 8, 2, 16, 8, 6);
+    headGradient.addColorStop(0, '#ffccbb');
+    headGradient.addColorStop(1, '#e8a492');
+    playerCtx.fillStyle = headGradient;
+    playerCtx.fillRect(12, 4, 8, 10);
+
+    // Eyes
+    playerCtx.fillStyle = '#000000';
+    playerCtx.fillRect(14, 7, 2, 2);
+    playerCtx.fillRect(18, 7, 2, 2);
+
+    // Arms with shading
     playerCtx.fillStyle = '#4a90e2';
-    playerCtx.fillRect(6, 8, 12, 16);
-    
-    // Head
-    playerCtx.fillStyle = '#fdbcb4';
-    playerCtx.fillRect(8, 2, 8, 8);
-    
-    // Arms
-    playerCtx.fillStyle = '#4a90e2';
-    playerCtx.fillRect(2, 10, 4, 10);
-    playerCtx.fillRect(18, 10, 4, 10);
-    
+    playerCtx.fillRect(6, 14, 4, 12);
+    playerCtx.fillRect(22, 14, 4, 12);
+
+    // Arm highlights
+    playerCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    playerCtx.fillRect(7, 14, 1, 6);
+    playerCtx.fillRect(23, 14, 1, 6);
+
     // Legs
     playerCtx.fillStyle = '#2c5aa0';
-    playerCtx.fillRect(8, 20, 3, 4);
-    playerCtx.fillRect(13, 20, 3, 4);
-    
+    playerCtx.fillRect(11, 24, 4, 6);
+    playerCtx.fillRect(17, 24, 4, 6);
+
+    // Belt
+    playerCtx.fillStyle = '#654321';
+    playerCtx.fillRect(10, 20, 12, 2);
+
     this.characterSprites['player'] = playerCanvas;
 
     // NPC sprite
@@ -806,28 +853,42 @@ export class GameEngine {
   private updateCamera() {
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
-    
-    const newCameraX = this.gameState.player.position.x - centerX;
-    const newCameraY = this.gameState.player.position.y - centerY;
-    
+
+    const targetCameraX = this.gameState.player.position.x - centerX;
+    const targetCameraY = this.gameState.player.position.y - centerY;
+
     // Use actual tile array dimensions instead of declared map dimensions
     const actualMapHeight = this.gameState.currentMap.tiles.length;
     const actualMapWidth = this.gameState.currentMap.tiles[0]?.length || 0;
     const mapWidth = actualMapWidth * 32;
     const mapHeight = actualMapHeight * 32;
-    
-    this.gameState.camera.x = Math.max(0, Math.min(newCameraX, mapWidth - this.canvas.width));
-    this.gameState.camera.y = Math.max(0, Math.min(newCameraY, mapHeight - this.canvas.height));
+
+    // Clamp target position
+    const clampedTargetX = Math.max(0, Math.min(targetCameraX, mapWidth - this.canvas.width));
+    const clampedTargetY = Math.max(0, Math.min(targetCameraY, mapHeight - this.canvas.height));
+
+    // Smooth camera follow with lerp
+    const lerpFactor = 0.15;
+    this.gameState.camera.x += (clampedTargetX - this.gameState.camera.x) * lerpFactor;
+    this.gameState.camera.y += (clampedTargetY - this.gameState.camera.y) * lerpFactor;
+
+    // Snap if very close to target
+    if (Math.abs(this.gameState.camera.x - clampedTargetX) < 0.5) {
+      this.gameState.camera.x = clampedTargetX;
+    }
+    if (Math.abs(this.gameState.camera.y - clampedTargetY) < 0.5) {
+      this.gameState.camera.y = clampedTargetY;
+    }
 
     // Update render bounds only if camera moved significantly
-    if (Math.abs(this.gameState.camera.x - this.lastCameraPosition.x) > 32 || 
-        Math.abs(this.gameState.camera.y - this.lastCameraPosition.y) > 32) {
-      
+    if (Math.abs(this.gameState.camera.x - this.lastCameraPosition.x) > 16 ||
+        Math.abs(this.gameState.camera.y - this.lastCameraPosition.y) > 16) {
+
       this.renderBounds.startX = Math.max(0, Math.floor(this.gameState.camera.x / 32) - 1);
       this.renderBounds.startY = Math.max(0, Math.floor(this.gameState.camera.y / 32) - 1);
       this.renderBounds.endX = Math.min(this.renderBounds.startX + Math.ceil(this.canvas.width / 32) + 2, actualMapWidth);
       this.renderBounds.endY = Math.min(this.renderBounds.startY + Math.ceil(this.canvas.height / 32) + 2, actualMapHeight);
-      
+
       this.lastCameraPosition = { ...this.gameState.camera };
       this.cacheInvalidated = true;
     }
@@ -1085,52 +1146,75 @@ export class GameEngine {
     const screenX = this.gameState.player.position.x - this.gameState.camera.x;
     const screenY = this.gameState.player.position.y - this.gameState.camera.y;
 
+    // Add walking animation bob
+    const time = Date.now() / 1000;
+    const bobOffset = this.gameState.player.isMoving ? Math.sin(time * 10) * 2 : 0;
+
     // Use sprite if available
     const sprite = this.characterSprites['player'];
     if (sprite) {
-      this.ctx.drawImage(sprite, screenX - 12, screenY - 12);
+      this.ctx.drawImage(sprite, screenX - 16, screenY - 16 + bobOffset);
     } else {
       // Fallback rendering
       this.ctx.fillStyle = '#4a90e2';
-      this.ctx.fillRect(screenX - 12, screenY - 12, 24, 24);
+      this.ctx.fillRect(screenX - 12, screenY - 12 + bobOffset, 24, 24);
     }
-    
-    // Direction indicator
-    this.ctx.fillStyle = '#ffffff';
+
+    // Direction indicator with glow
+    this.ctx.shadowColor = '#ffff00';
+    this.ctx.shadowBlur = 8;
+    this.ctx.fillStyle = '#ffff00';
     this.ctx.beginPath();
     switch (this.gameState.player.direction) {
       case 'up':
-        this.ctx.moveTo(screenX, screenY - 15);
-        this.ctx.lineTo(screenX - 4, screenY - 8);
-        this.ctx.lineTo(screenX + 4, screenY - 8);
+        this.ctx.moveTo(screenX, screenY - 20 + bobOffset);
+        this.ctx.lineTo(screenX - 5, screenY - 12 + bobOffset);
+        this.ctx.lineTo(screenX + 5, screenY - 12 + bobOffset);
         break;
       case 'down':
-        this.ctx.moveTo(screenX, screenY + 15);
-        this.ctx.lineTo(screenX - 4, screenY + 8);
-        this.ctx.lineTo(screenX + 4, screenY + 8);
+        this.ctx.moveTo(screenX, screenY + 20 + bobOffset);
+        this.ctx.lineTo(screenX - 5, screenY + 12 + bobOffset);
+        this.ctx.lineTo(screenX + 5, screenY + 12 + bobOffset);
         break;
       case 'left':
-        this.ctx.moveTo(screenX - 15, screenY);
-        this.ctx.lineTo(screenX - 8, screenY - 4);
-        this.ctx.lineTo(screenX - 8, screenY + 4);
+        this.ctx.moveTo(screenX - 20, screenY + bobOffset);
+        this.ctx.lineTo(screenX - 12, screenY - 5 + bobOffset);
+        this.ctx.lineTo(screenX - 12, screenY + 5 + bobOffset);
         break;
       case 'right':
-        this.ctx.moveTo(screenX + 15, screenY);
-        this.ctx.lineTo(screenX + 8, screenY - 4);
-        this.ctx.lineTo(screenX + 8, screenY + 4);
+        this.ctx.moveTo(screenX + 20, screenY + bobOffset);
+        this.ctx.lineTo(screenX + 12, screenY - 5 + bobOffset);
+        this.ctx.lineTo(screenX + 12, screenY + 5 + bobOffset);
         break;
     }
     this.ctx.closePath();
     this.ctx.fill();
+    this.ctx.shadowBlur = 0;
 
-    // Player name
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 12px Arial';
+    // Player name with better styling
+    this.ctx.font = 'bold 13px Arial';
     this.ctx.textAlign = 'center';
+
+    // Name background
+    const nameWidth = this.ctx.measureText(this.gameState.player.name).width;
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.fillRect(screenX - nameWidth/2 - 4, screenY - 35 + bobOffset, nameWidth + 8, 16);
+
+    // Name text with outline
     this.ctx.strokeStyle = '#000000';
-    this.ctx.lineWidth = 3;
-    this.ctx.strokeText(this.gameState.player.name, screenX, screenY - 25);
-    this.ctx.fillText(this.gameState.player.name, screenX, screenY - 25);
+    this.ctx.lineWidth = 4;
+    this.ctx.strokeText(this.gameState.player.name, screenX, screenY - 23 + bobOffset);
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fillText(this.gameState.player.name, screenX, screenY - 23 + bobOffset);
+
+    // Health bar above name
+    const healthPercent = this.gameState.player.health / this.gameState.player.maxHealth;
+    const barWidth = 40;
+    const barHeight = 4;
+    this.ctx.fillStyle = '#000000';
+    this.ctx.fillRect(screenX - barWidth/2, screenY - 40 + bobOffset, barWidth, barHeight);
+    this.ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+    this.ctx.fillRect(screenX - barWidth/2, screenY - 40 + bobOffset, barWidth * healthPercent, barHeight);
   }
 
   private renderNPCs() {
@@ -1278,163 +1362,283 @@ export class GameEngine {
 
   private renderUI() {
     // Enhanced UI with better graphics
-    const uiPadding = 20;
-    const barHeight = 25;
-    const barWidth = 250;
-    
-    // Health bar
+    const uiPadding = 15;
+    const barHeight = 28;
+    const barWidth = 280;
+
+    // Semi-transparent UI panel background
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    this.ctx.fillRect(0, 0, barWidth + uiPadding * 2, (barHeight + 12) * 3 + uiPadding * 2);
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(0, 0, barWidth + uiPadding * 2, (barHeight + 12) * 3 + uiPadding * 2);
+
+    // Health bar with icon
+    this.ctx.fillStyle = '#ff4444';
+    this.ctx.font = 'bold 18px Arial';
+    this.ctx.fillText('❤', uiPadding, uiPadding + 20);
     this.renderStatusBar(
-      uiPadding, uiPadding,
-      barWidth, barHeight,
+      uiPadding + 25, uiPadding,
+      barWidth - 25, barHeight,
       this.gameState.player.health / this.gameState.player.maxHealth,
-      '#ff0000', '#660000',
-      `Health: ${this.gameState.player.health}/${this.gameState.player.maxHealth}`
+      '#ff3333', '#aa0000',
+      `${this.gameState.player.health}/${this.gameState.player.maxHealth}`
     );
 
-    // Energy bar
+    // Energy bar with icon
+    this.ctx.fillStyle = '#4499ff';
+    this.ctx.font = 'bold 18px Arial';
+    this.ctx.fillText('⚡', uiPadding, uiPadding + barHeight + 32);
     this.renderStatusBar(
-      uiPadding, uiPadding + barHeight + 10,
-      barWidth, barHeight,
+      uiPadding + 25, uiPadding + barHeight + 12,
+      barWidth - 25, barHeight,
       this.gameState.player.energy / this.gameState.player.maxEnergy,
-      '#0088ff', '#004488',
-      `Energy: ${Math.floor(this.gameState.player.energy)}/${this.gameState.player.maxEnergy}`
+      '#3388ff', '#0055cc',
+      `${Math.floor(this.gameState.player.energy)}/${this.gameState.player.maxEnergy}`
     );
 
-    // Experience bar
+    // Experience bar with icon
+    this.ctx.fillStyle = '#ffcc00';
+    this.ctx.font = 'bold 18px Arial';
+    this.ctx.fillText('★', uiPadding, uiPadding + (barHeight + 12) * 2 + 20);
     this.renderStatusBar(
-      uiPadding, uiPadding + (barHeight + 10) * 2,
-      barWidth, barHeight,
+      uiPadding + 25, uiPadding + (barHeight + 12) * 2,
+      barWidth - 25, barHeight,
       this.gameState.player.experience / this.gameState.player.experienceToNext,
-      '#ffaa00', '#cc8800',
-      `Level ${this.gameState.player.level} - XP: ${this.gameState.player.experience}/${this.gameState.player.experienceToNext}`
+      '#ffbb00', '#dd9900',
+      `Lv.${this.gameState.player.level} - ${this.gameState.player.experience}/${this.gameState.player.experienceToNext}`
     );
 
-    // Location and time info
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    this.ctx.fillRect(uiPadding, this.canvas.height - 80, 300, 60);
-    
+    // Location and time info panel
+    const infoPanelY = this.canvas.height - 95;
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    this.ctx.fillRect(uiPadding - 5, infoPanelY, 320, 85);
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(uiPadding - 5, infoPanelY, 320, 85);
+
     this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 14px Arial';
+    this.ctx.font = 'bold 15px Arial';
     this.ctx.textAlign = 'left';
-    this.ctx.fillText(`Location: ${this.gameState.currentMap.name}`, uiPadding + 10, this.canvas.height - 55);
-    
-    const timeOfDay = this.gameState.dayNightCycle < 0.25 || this.gameState.dayNightCycle > 0.75 ? 'Night' : 
-                     this.gameState.dayNightCycle < 0.5 ? 'Day' : 'Evening';
-    this.ctx.fillText(`Time: ${timeOfDay}`, uiPadding + 10, this.canvas.height - 35);
-    this.ctx.fillText(`Weather: ${this.gameState.weather}`, uiPadding + 10, this.canvas.height - 15);
-    
-    // Show exit hint for interiors
+
+    // Location with icon
+    this.ctx.fillText('📍', uiPadding, infoPanelY + 25);
+    this.ctx.fillText(this.gameState.currentMap.name, uiPadding + 25, infoPanelY + 25);
+
+    // Time with icon
+    const timeOfDay = this.gameState.dayNightCycle < 0.25 || this.gameState.dayNightCycle > 0.75 ? '🌙 Night' :
+                     this.gameState.dayNightCycle < 0.5 ? '☀️ Day' : '🌅 Evening';
+    this.ctx.fillText(timeOfDay, uiPadding, infoPanelY + 50);
+
+    // Weather with icon
+    const weatherIcon = this.gameState.weather === 'clear' ? '☀️' :
+                       this.gameState.weather === 'rain' ? '🌧️' :
+                       this.gameState.weather === 'storm' ? '⛈️' :
+                       this.gameState.weather === 'fog' ? '🌫️' : '☢️';
+    this.ctx.fillText(`${weatherIcon} ${this.gameState.weather.charAt(0).toUpperCase() + this.gameState.weather.slice(1)}`, uiPadding, infoPanelY + 75);
+
+    // Gold counter
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    this.ctx.fillRect(this.canvas.width - 170, uiPadding - 5, 160, 45);
+    this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(this.canvas.width - 170, uiPadding - 5, 160, 45);
+
+    this.ctx.fillStyle = '#ffd700';
+    this.ctx.font = 'bold 20px Arial';
+    this.ctx.textAlign = 'right';
+    this.ctx.fillText(`💰 ${this.gameState.gold}`, this.canvas.width - 20, uiPadding + 25);
+
+    // Show exit hint for interiors with better styling
     if (this.gameState.currentMap.isInterior && this.gameState.previousMap) {
-      this.ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
-      this.ctx.font = 'bold 16px Arial';
+      const time = Date.now() / 1000;
+      const pulse = 0.8 + Math.sin(time * 3) * 0.2;
+
+      this.ctx.fillStyle = `rgba(255, 255, 0, ${pulse})`;
+      this.ctx.font = 'bold 18px Arial';
       this.ctx.textAlign = 'center';
-      this.ctx.fillText('Press ESC to exit building', this.canvas.width / 2, 50);
+      this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+      this.ctx.lineWidth = 4;
+      this.ctx.strokeText('⬅ Press ESC to exit building', this.canvas.width / 2, 60);
+      this.ctx.fillText('⬅ Press ESC to exit building', this.canvas.width / 2, 60);
     }
 
     // Mini-map
     this.renderMiniMap();
   }
 
-  private renderStatusBar(x: number, y: number, width: number, height: number, 
+  private renderStatusBar(x: number, y: number, width: number, height: number,
                          percentage: number, fillColor: string, bgColor: string, text: string) {
-    // Background
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    this.ctx.fillRect(x - 5, y - 5, width + 10, height + 10);
-    
+    // Outer border with glow
+    this.ctx.shadowColor = fillColor;
+    this.ctx.shadowBlur = 8;
+    this.ctx.strokeStyle = fillColor;
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(x - 2, y - 2, width + 4, height + 4);
+    this.ctx.shadowBlur = 0;
+
     // Bar background
     this.ctx.fillStyle = bgColor;
     this.ctx.fillRect(x, y, width, height);
-    
-    // Bar fill with gradient
+
+    // Bar fill with animated gradient
     const gradient = this.ctx.createLinearGradient(x, y, x + width, y);
     gradient.addColorStop(0, fillColor);
-    gradient.addColorStop(1, this.lightenColor(fillColor, 0.3));
+    gradient.addColorStop(0.5, this.lightenColor(fillColor, 0.4));
+    gradient.addColorStop(1, fillColor);
     this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(x, y, width * Math.max(0, percentage), height);
-    
-    // Border
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 2;
+
+    const fillWidth = width * Math.max(0, Math.min(1, percentage));
+    this.ctx.fillRect(x, y, fillWidth, height);
+
+    // Add shine effect on bar
+    const shineGradient = this.ctx.createLinearGradient(x, y, x, y + height);
+    shineGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+    shineGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+    shineGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    this.ctx.fillStyle = shineGradient;
+    this.ctx.fillRect(x, y, fillWidth, height / 2);
+
+    // Inner border
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    this.ctx.lineWidth = 1;
     this.ctx.strokeRect(x, y, width, height);
-    
-    // Text
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = 'bold 12px Arial';
+
+    // Text with shadow
+    this.ctx.font = 'bold 13px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.strokeStyle = '#000000';
-    this.ctx.lineWidth = 3;
-    this.ctx.strokeText(text, x + width / 2, y + height / 2 + 4);
-    this.ctx.fillText(text, x + width / 2, y + height / 2 + 4);
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.shadowBlur = 4;
+    this.ctx.shadowOffsetX = 2;
+    this.ctx.shadowOffsetY = 2;
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fillText(text, x + width / 2, y + height / 2 + 5);
+    this.ctx.shadowBlur = 0;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 0;
   }
 
   private lightenColor(color: string, factor: number): string {
     const hex = color.replace('#', '');
-    const r = Math.min(255, parseInt(hex.substr(0, 2), 16) + Math.floor(255 * factor));
-    const g = Math.min(255, parseInt(hex.substr(2, 2), 16) + Math.floor(255 * factor));
-    const b = Math.min(255, parseInt(hex.substr(4, 2), 16) + Math.floor(255 * factor));
+    const r = Math.min(255, parseInt(hex.substring(0, 2), 16) + Math.floor(255 * factor));
+    const g = Math.min(255, parseInt(hex.substring(2, 4), 16) + Math.floor(255 * factor));
+    const b = Math.min(255, parseInt(hex.substring(4, 6), 16) + Math.floor(255 * factor));
     return `rgb(${r}, ${g}, ${b})`;
   }
 
   private renderMiniMap() {
-    const miniMapSize = 150;
-    const miniMapX = this.canvas.width - miniMapSize - 20;
-    const miniMapY = 20;
-    
-    // Background
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    this.ctx.fillRect(miniMapX - 5, miniMapY - 5, miniMapSize + 10, miniMapSize + 10);
-    
-    this.ctx.fillStyle = '#000000';
+    const miniMapSize = 160;
+    const miniMapX = this.canvas.width - miniMapSize - 15;
+    const miniMapY = 80;
+
+    // Enhanced background with border
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    this.ctx.fillRect(miniMapX - 8, miniMapY - 8, miniMapSize + 16, miniMapSize + 16);
+
+    this.ctx.strokeStyle = 'rgba(100, 200, 255, 0.6)';
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(miniMapX - 6, miniMapY - 6, miniMapSize + 12, miniMapSize + 12);
+
+    this.ctx.fillStyle = '#0a0a0a';
     this.ctx.fillRect(miniMapX, miniMapY, miniMapSize, miniMapSize);
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(miniMapX, miniMapY, miniMapSize, miniMapSize);
-    
+
     const scaleX = miniMapSize / this.gameState.currentMap.width;
     const scaleY = miniMapSize / this.gameState.currentMap.height;
-    
-    // Render discovered tiles
-    const sampleRate = Math.max(1, Math.floor(this.gameState.currentMap.width / 50));
-    
+
+    // Render discovered tiles with better sampling
+    const sampleRate = Math.max(1, Math.floor(this.gameState.currentMap.width / 60));
+
     for (let y = 0; y < this.gameState.currentMap.height; y += sampleRate) {
       for (let x = 0; x < this.gameState.currentMap.width; x += sampleRate) {
         if (!this.gameState.currentMap.tiles[y] || !this.gameState.currentMap.tiles[y][x]) continue;
         const tile = this.gameState.currentMap.tiles[y][x];
         if (!tile.discovered) continue;
-        
+
         const pixelX = miniMapX + x * scaleX;
         const pixelY = miniMapY + y * scaleY;
-        
+
         let color = this.getTileColor(tile.type);
         if (!tile.visible && !this.gameState.currentMap.isInterior) {
-          color = this.darkenColor(color, 0.5);
+          color = this.darkenColor(color, 0.4);
         }
-        
+
         this.ctx.fillStyle = color;
         this.ctx.fillRect(pixelX, pixelY, Math.max(1, scaleX * sampleRate), Math.max(1, scaleY * sampleRate));
       }
     }
-    
-    // Player position
-    const playerX = miniMapX + (this.gameState.player.position.x / 32) * scaleX;
-    const playerY = miniMapY + (this.gameState.player.position.y / 32) * scaleY;
-    this.ctx.fillStyle = '#ff0000';
-    this.ctx.fillRect(playerX - 2, playerY - 2, 4, 4);
-    
+
+    // View cone indicator
+    const viewRadius = 10;
+    const playerMapX = miniMapX + (this.gameState.player.position.x / 32) * scaleX;
+    const playerMapY = miniMapY + (this.gameState.player.position.y / 32) * scaleY;
+
+    this.ctx.strokeStyle = 'rgba(100, 200, 255, 0.3)';
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.arc(playerMapX, playerMapY, viewRadius * scaleX, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    // Enemies
+    this.gameState.currentMap.enemies.forEach(enemy => {
+      const enemyX = miniMapX + (enemy.position.x / 32) * scaleX;
+      const enemyY = miniMapY + (enemy.position.y / 32) * scaleY;
+      this.ctx.fillStyle = '#ff3333';
+      this.ctx.beginPath();
+      this.ctx.arc(enemyX, enemyY, 2, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+
     // NPCs
     this.gameState.currentMap.npcs.forEach(npc => {
       const npcX = miniMapX + (npc.position.x / 32) * scaleX;
       const npcY = miniMapY + (npc.position.y / 32) * scaleY;
-      this.ctx.fillStyle = npc.isHostile ? '#ff4444' : '#44ff44';
-      this.ctx.fillRect(npcX - 1, npcY - 1, 2, 2);
+      this.ctx.fillStyle = npc.isHostile ? '#ff6666' : '#66ff66';
+      this.ctx.beginPath();
+      this.ctx.arc(npcX, npcY, 2, 0, Math.PI * 2);
+      this.ctx.fill();
     });
+
+    // Player position with pulse effect
+    const time = Date.now() / 1000;
+    const pulse = 1 + Math.sin(time * 4) * 0.3;
+
+    this.ctx.shadowColor = '#ffff00';
+    this.ctx.shadowBlur = 10;
+    this.ctx.fillStyle = '#ffff00';
+    this.ctx.beginPath();
+    this.ctx.arc(playerMapX, playerMapY, 3 * pulse, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.shadowBlur = 0;
+
+    // Direction indicator
+    const dirLength = 8;
+    let dirX = 0, dirY = 0;
+    switch (this.gameState.player.direction) {
+      case 'up': dirY = -dirLength; break;
+      case 'down': dirY = dirLength; break;
+      case 'left': dirX = -dirLength; break;
+      case 'right': dirX = dirLength; break;
+    }
+
+    this.ctx.strokeStyle = '#ffff00';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(playerMapX, playerMapY);
+    this.ctx.lineTo(playerMapX + dirX, playerMapY + dirY);
+    this.ctx.stroke();
+
+    // Map title
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = 'bold 11px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('MAP', miniMapX + miniMapSize / 2, miniMapY - 12);
   }
 
   private darkenColor(color: string, factor: number): string {
     const hex = color.replace('#', '');
-    const r = Math.floor(parseInt(hex.substr(0, 2), 16) * factor);
-    const g = Math.floor(parseInt(hex.substr(2, 2), 16) * factor);
-    const b = Math.floor(parseInt(hex.substr(4, 2), 16) * factor);
+    const r = Math.floor(parseInt(hex.substring(0, 2), 16) * factor);
+    const g = Math.floor(parseInt(hex.substring(2, 4), 16) * factor);
+    const b = Math.floor(parseInt(hex.substring(4, 6), 16) * factor);
     return `rgb(${r}, ${g}, ${b})`;
   }
   
@@ -1515,6 +1719,20 @@ export class GameEngine {
 
   public setGameState(newState: GameState) {
     this.gameState = { ...newState };
+    this.cacheInvalidated = true;
+  }
+
+  public updateGameState(newState: GameState) {
+    const mapChanged = this.gameState.currentMap.id !== newState.currentMap.id;
+    this.gameState = { ...newState };
+
+    if (mapChanged) {
+      this.visibleTileCache = {};
+      this.lastCameraPosition = { x: -1, y: -1 };
+      this.cacheInvalidated = true;
+      this.updateCamera();
+      this.updateVisibility();
+    }
   }
 
   public getGameState(): GameState {

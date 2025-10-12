@@ -53,7 +53,7 @@ export const useGameState = () => {
       gameTime: 0,
       dayNightCycle: 0.5, // Start at noon
       weather: 'clear',
-      quests: [],
+      quests: [allQuests.find(q => q.id === 'escape_vault_101')!], // Start with the escape quest
       completedQuests: [],
       discoveredMaps: ['wasteland'],
       gameMode: 'exploration',
@@ -92,7 +92,6 @@ export const useGameState = () => {
         goldSpent: 0
       },
       visibilityMap: [],
-      quests: [allQuests.find(q => q.id === 'escape_vault_101')!], // Start with the escape quest
       devMode: {
         enabled: false,
         selectedTool: 'quest',
